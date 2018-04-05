@@ -12,8 +12,8 @@ module Funk
       @col, @row = 0, 0
     end
 
-    def self.new(source : String, filename = "") : Lexer
-      self.new(IO::Memory.new(source), filename)
+    def self.new(source : String, filename = "", skip_comments = true) : Lexer
+      self.new(IO::Memory.new(source), filename, skip_comments)
     end
 
     def current_char : Char
@@ -67,12 +67,48 @@ module Funk
         tok = operator_or_assign(TokenType::GreaterThan, ">")
       when '<'
         tok = operator_or_assign(TokenType::LessThan, "<")
+      when '!'
+        if peek_is?('=')
+          consume
+          tok = Token.new("!=", Position.new(col, row, filename), TokenType::NotEqual)
+        else
+          raise UnexpectedToken.new(message: "Unexpected token: ! #{col}:#{row}")
+        end
+      when '&'
+        if peek_is?('&')
+          consume
+          tok = Token.new("&&", Position.new(col, row, filename), TokenType::AND)
+        else
+          raise UnexpectedToken.new(message: "Unexpected token: & #{col}:#{row}")
+        end
+      when '|'
+        if peek_is?('|')
+          consume
+          tok = Token.new("||", Position.new(col, row, filename), TokenType::OR)
+        else
+          raise UnexpectedToken.new(message: "Unexpected token: & #{col}:#{row}")
+        end
       when '#'
         if peek_is?('t') || peek_is?('T') || peek_is?('f') || peek_is?('F')
-          tok = Token.new("#t", Position.new(col, row, filename), TokenType::Boolean)
+          consume
+          tok = Token.new("##{current_char}", Position.new(col, row, filename), TokenType::Boolean)
         else
           raise UnexpectedToken.new(message: "Unexpected token: # #{col}:#{row}")
         end
+      when '{'
+        tok = Token.new("{", Position.new(col, row, filename), TokenType::LeftCurly)
+      when '}'
+        tok = Token.new("}", Position.new(col, row, filename), TokenType::RightCurly)
+      when '('
+        tok = Token.new("(", Position.new(col, row, filename), TokenType::LeftParen)
+      when ')'
+        tok = Token.new(")", Position.new(col, row, filename), TokenType::RightParen)
+      when '.'
+        tok = Token.new(".", Position.new(col, row, filename), TokenType::Point)
+      when '"'
+        tok = consume_string
+      when '0'..'9'
+        tok = consume_numeric
       end
 
       consume
@@ -87,6 +123,42 @@ module Funk
         @col = 0
         @row += 1
       end
+    end
+
+    private def consume_string : Token
+      start_col = col
+      start_row = row
+
+      consume # opening "
+      str = ""
+
+      while current_char != '"' && current_char != Funk::Reader::EOF
+        if current_is?('\\')
+          consume
+          case current_char
+          when 'n'
+            str += "\n"
+          when 't'
+            str += "\t"
+          when 'r'
+            str += "\r"
+          else
+            raise UnknownEscapeSequence.new("Unknown escape sequence ")
+          end
+        else
+          str += current_char
+        end
+
+        consume
+      end
+
+      if current_char != '"'
+        raise UnexpectedToken.new("Expecting a closing \" found #{current_char} at #{col}:#{row} instead")
+      else
+        consume # closing "
+      end
+
+      Token.new(str, Position.new(col, row, filename), TokenType::String)
     end
 
     private def operator_or_assign(op : TokenType, raw : String) : Token
@@ -131,12 +203,35 @@ module Funk
       peek == val
     end
 
+    private def current_is?(val : Char) : Bool
+      current_char == val
+    end
+
     private def is_ws? : Bool
       current_char == ' ' || current_char == '\n' || current_char == '\t' || current_char == '\r'
+    end
+
+    private def consume_numeric : Token
+      numeric = ""
+      start_col = col
+      start_row = row
+
+      while current_char.number? || (current_is?('.') && peek.number?) || (current_is?('_') && peek.number?)
+        numeric += current_char unless current_is?('_') # accept underscore just dont consume it
+        consume
+      end
+
+      Token.new(numeric, Position.new(start_col, start_row, filename), TokenType::Numeric)
     end
   end
 
   class UnexpectedToken < Exception
+    def initialize(message : String)
+      super(message)
+    end
+  end
+
+  class UnknownEscapeSequence < Exception
     def initialize(message : String)
       super(message)
     end

@@ -1,6 +1,6 @@
 module Funk
   class Reader
-    property source  : File | IO::Memory
+    property source  : IO::Memory
     property buffer  : IO::Memory
     property pos     : Int32
     property current : Char
@@ -10,8 +10,7 @@ module Funk
     def initialize(@source)
       @pos     = 0
       @buffer  = IO::Memory.new
-      @current = EOF
-      read_char
+      @current = prime
     end
 
     def self.new(source : String) : Reader
@@ -20,8 +19,7 @@ module Funk
 
     def read_char : Char
       char = source.read_char
-      char = EOF unless char.is_a?(Char)
-      puts char
+      char = EOF unless char
 
       @pos += 1
       @current = char
@@ -32,10 +30,9 @@ module Funk
 
     def peek : Char
       char = source.read_char
-      char = EOF unless char.is_a?(Char)
+      char = EOF unless char
 
-      source.pos -= 1 unless source.size == 0
-
+      source.pos -= 1
       char
     end
 
@@ -44,6 +41,12 @@ module Funk
       until current == EOF
         read_char
       end
+    end
+
+    private def prime : Char
+      char = source.read_char
+      char = EOF unless char
+      char
     end
   end
 end

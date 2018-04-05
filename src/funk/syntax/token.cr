@@ -9,5 +9,9 @@ module Funk
 
     def initialize(@raw : String, @position = position, @type = TokenType::Unknown)
     end
+
+    def to_s(io)
+      io << self.type << ", " << raw << " " << position
+    end
   end
 end

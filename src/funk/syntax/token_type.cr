@@ -42,10 +42,7 @@ module Funk
     Comment
     Point
 
-    # Whitespace
-    Whitespace
-    Newline
-
+    # Misc
     EOF
     Unknown
   end
