@@ -2,6 +2,22 @@ require "./reader.cr"
 
 module Funk
   class Lexer
+    # Valid chars in an identifier
+    VALID_IDENT_CHARS = ['_', '!', '?']
+
+    # Funk language keywords
+    KEYWORDS = [
+      "def",
+      "if",
+      "elsif",
+      "else",
+      "unless",
+      "while",
+      "until",
+      "class",
+      "return"
+    ]
+
     property reader        : Reader
     property filename      : String
     property skip_comments : Bool
@@ -109,6 +125,8 @@ module Funk
         tok = consume_string
       when '0'..'9'
         tok = consume_numeric
+      when 'A'..'Z', 'a'..'z'
+        tok = ident_or_keyword
       end
 
       consume
@@ -161,36 +179,55 @@ module Funk
       Token.new(str, Position.new(col, row, filename), TokenType::String)
     end
 
+    private def ident_or_keyword : Token
+      ident = ""
+      pos   = Position.new(col, row, filename)
+
+      while valid_ident?
+        ident += current_char
+        consume
+      end
+
+      ident = ident.downcase
+
+      return Token.new(ident, pos, TokenType::Keyword) if KEYWORDS.includes?(ident)
+
+      Token.new(ident, pos, TokenType::Identifier)
+    end
+
+    private def valid_ident? : Bool
+      current_char.letter? || VALID_IDENT_CHARS.includes?(current_char)
+    end
+
     private def operator_or_assign(op : TokenType, raw : String) : Token
-      start_col = col
-      start_row = row
+      pos = Position.new(col, row, filename)
 
       if peek_is?('=')
         consume
 
         case op
         when TokenType::Plus
-          return Token.new("+=", Position.new(start_col, start_row, filename), TokenType::PlusAssign)
+          return Token.new("+=", pos, TokenType::PlusAssign)
         when TokenType::Minus
-          return Token.new("-=", Position.new(start_col, start_row, filename), TokenType::MinusAssign)
+          return Token.new("-=", pos, TokenType::MinusAssign)
         when TokenType::Divide
-          return Token.new("/=", Position.new(start_col, start_row, filename), TokenType::DivideAssign)
+          return Token.new("/=", pos, TokenType::DivideAssign)
         when TokenType::Multiply
-          return Token.new("*=", Position.new(start_col, start_row, filename), TokenType::MultiplyAssign)
+          return Token.new("*=", pos, TokenType::MultiplyAssign)
         when TokenType::Modulus
-          return Token.new("%=", Position.new(start_col, start_row, filename), TokenType::ModulusAssign)
+          return Token.new("%=", pos, TokenType::ModulusAssign)
         when TokenType::Power
-          return Token.new("**=", Position.new(start_col, start_row, filename), TokenType::PowerAssign)
+          return Token.new("**=", pos, TokenType::PowerAssign)
         when TokenType::Assignment
-          return Token.new("==", Position.new(start_col, start_row, filename), TokenType::Equal)
+          return Token.new("==", pos, TokenType::Equal)
         when TokenType::GreaterThan
-          return Token.new(">=", Position.new(start_col, start_row, filename), TokenType::GreaterEqual)
+          return Token.new(">=", pos, TokenType::GreaterEqual)
         when TokenType::LessThan
-          return Token.new(">=", Position.new(start_col, start_row, filename), TokenType::LessEqual)
+          return Token.new(">=", pos, TokenType::LessEqual)
         end
       end
 
-      Token.new(raw, Position.new(start_col, start_row, filename), op)
+      Token.new(raw, pos, op)
     end
 
     private def skip_ws
@@ -222,18 +259,6 @@ module Funk
       end
 
       Token.new(numeric, Position.new(start_col, start_row, filename), TokenType::Numeric)
-    end
-  end
-
-  class UnexpectedToken < Exception
-    def initialize(message : String)
-      super(message)
-    end
-  end
-
-  class UnknownEscapeSequence < Exception
-    def initialize(message : String)
-      super(message)
     end
   end
 end

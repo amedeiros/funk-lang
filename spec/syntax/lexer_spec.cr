@@ -213,8 +213,23 @@ describe Funk::Lexer do
       token.raw.should eq val
     end
 
-    # Identifier
-    # Keyword
+    Funk::Lexer::KEYWORDS.each do |keyword|
+      it "should lex keyword #{keyword}" do
+        token = Funk::Lexer.new(keyword).next
+
+        token.type.should eq Funk::TokenType::Keyword
+        token.raw.should eq keyword
+      end
+    end
+
+    ["ident_test", "key?", "save!", "ident"].each do |ident|
+      it "should lex identifier #{ident}" do
+        token = Funk::Lexer.new(ident).next
+
+        token.type.should eq Funk::TokenType::Identifier
+        token.raw.should eq ident
+      end
+    end
 
     it "should lex multiple tokens" do
       lexer = Funk::Lexer.new("+ -")
@@ -222,6 +237,12 @@ describe Funk::Lexer do
       token.type.should eq Funk::TokenType::Plus
       token_two = lexer.next
       token_two.type.should eq Funk::TokenType::Minus
+    end
+
+    it "should lex an unkown token" do
+      token = Funk::Lexer.new("@").next
+
+      token.type.should eq Funk::TokenType::Unknown
     end
   end
 end
