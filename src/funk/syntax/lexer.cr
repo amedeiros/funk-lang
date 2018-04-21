@@ -15,7 +15,9 @@ module Funk
       "while",
       "until",
       "class",
-      "return"
+      "return",
+      "break",
+      "continue"
     ]
 
     property reader        : Reader
