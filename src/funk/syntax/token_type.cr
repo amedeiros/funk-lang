@@ -5,7 +5,20 @@ module Funk
     Boolean
     String
     Identifier
-    Keyword
+    
+    # Keywords
+    Def
+    If
+    ElsIf
+    Else
+    Unless
+    While
+    Until
+    Class
+    Return
+    Break
+    Continue
+    Lambda
 
     # Operators
     Plus
@@ -15,6 +28,7 @@ module Funk
     Modulus
     Power
     Assignment
+    Bang
 
     # Comparison
     Equal
@@ -41,6 +55,8 @@ module Funk
     RightParen
     Comment
     Point
+    NewLine
+    Comma
 
     # Misc
     EOF

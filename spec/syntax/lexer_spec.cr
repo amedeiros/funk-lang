@@ -12,6 +12,13 @@ describe Funk::Lexer do
       token.type.should eq Funk::TokenType::EOF
     end
 
+    it "should lex lambda reserved symbol" do
+      lexer = Funk::Lexer.new("->")
+      token = lexer.next
+
+      token.type.should eq Funk::TokenType::Lambda
+    end
+
     # Operators
 
     it "should lex a plus sign" do
@@ -62,6 +69,12 @@ describe Funk::Lexer do
       token = Funk::Lexer.new("==").next
 
       token.type.should eq Funk::TokenType::Equal
+    end
+
+    it "should lex bang" do
+      token = Funk::Lexer.new("!").next
+
+      token.type.should eq Funk::TokenType::Bang
     end
 
     it "should lex not equals" do
@@ -146,6 +159,15 @@ describe Funk::Lexer do
 
     # Structure
 
+    it "should lex a comma" do
+      lexer = Funk::Lexer.new("x,")
+
+      token = lexer.next
+      token.type.should eq Funk::TokenType::Identifier
+      token = lexer.next
+      token.type.should eq Funk::TokenType::Comma
+    end
+
     it "should lex left curly" do
       token = Funk::Lexer.new("{").next
 
@@ -213,11 +235,11 @@ describe Funk::Lexer do
       token.raw.should eq val
     end
 
-    Funk::Lexer::KEYWORDS.each do |keyword|
+    Funk::Lexer::KEYWORDS.each do |keyword, token_type|
       it "should lex keyword #{keyword}" do
         token = Funk::Lexer.new(keyword).next
 
-        token.type.should eq Funk::TokenType::Keyword
+        token.type.should eq token_type
         token.raw.should eq keyword
       end
     end

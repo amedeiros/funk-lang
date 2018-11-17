@@ -5,20 +5,20 @@ module Funk
     # Valid chars in an identifier
     VALID_IDENT_CHARS = ['_', '!', '?']
 
-    # Funk language keywords
-    KEYWORDS = [
-      "def",
-      "if",
-      "elsif",
-      "else",
-      "unless",
-      "while",
-      "until",
-      "class",
-      "return",
-      "break",
-      "continue"
-    ]
+    # Funk language keyword mappings
+    KEYWORDS = {
+      "def"       => TokenType::Def,
+      "if"        => TokenType::If,
+      "elsif"     => TokenType::ElsIf,
+      "else"      => TokenType::Else ,
+      "unless"    => TokenType::Unless,
+      "while"     => TokenType::While,
+      "until"     => TokenType::Until,
+      "class"     => TokenType::Class,
+      "return"    => TokenType::Return,
+      "break"     => TokenType::Break,
+      "continue"  => TokenType::Continue,
+  } of String => TokenType
 
     property reader        : Reader
     property filename      : String
@@ -46,11 +46,15 @@ module Funk
       skip_ws
 
       # Assume its unkown
-      tok = Token.new(current_char.to_s, Position.new(col, row, filename), TokenType::Unknown)
+      tok = Token.new(current_char.to_s, current_position, TokenType::Unknown)
 
       case current_char
+      when '\n', '\r'
+        tok = Token.new("", current_position, TokenType::NewLine)
       when '\0'
-        tok = Token.new("", Position.new(col, row, filename), TokenType::EOF)
+        tok = Token.new("", current_position, TokenType::EOF)
+      when ','
+        tok = Token.new(",", current_position, TokenType::Comma)
       when ';'
         comment   = ""
         start_col = col
@@ -66,7 +70,12 @@ module Funk
       when '+'
         tok = operator_or_assign(TokenType::Plus, "+")
       when '-'
-        tok = operator_or_assign(TokenType::Minus, "-")
+        if (peek_is?('>'))
+          consume
+          tok = Token.new("->", current_position, TokenType::Lambda)
+        else
+          tok = operator_or_assign(TokenType::Minus, "-")
+        end
       when '/'
         tok = operator_or_assign(TokenType::Divide, "/")
       when '*'
@@ -88,51 +97,55 @@ module Funk
       when '!'
         if peek_is?('=')
           consume
-          tok = Token.new("!=", Position.new(col, row, filename), TokenType::NotEqual)
+          tok = Token.new("!=", current_position, TokenType::NotEqual)
         else
-          raise UnexpectedToken.new(message: "Unexpected token: ! #{col}:#{row}")
+          tok = Token.new("!", current_position, TokenType::Bang)
         end
       when '&'
         if peek_is?('&')
           consume
-          tok = Token.new("&&", Position.new(col, row, filename), TokenType::AND)
+          tok = Token.new("&&", current_position, TokenType::AND)
         else
           raise UnexpectedToken.new(message: "Unexpected token: & #{col}:#{row}")
         end
       when '|'
         if peek_is?('|')
           consume
-          tok = Token.new("||", Position.new(col, row, filename), TokenType::OR)
+          tok = Token.new("||", current_position, TokenType::OR)
         else
           raise UnexpectedToken.new(message: "Unexpected token: & #{col}:#{row}")
         end
       when '#'
         if peek_is?('t') || peek_is?('T') || peek_is?('f') || peek_is?('F')
           consume
-          tok = Token.new("##{current_char}", Position.new(col, row, filename), TokenType::Boolean)
+          tok = Token.new("##{current_char.upcase}", current_position, TokenType::Boolean)
         else
           raise UnexpectedToken.new(message: "Unexpected token: # #{col}:#{row}")
         end
       when '{'
-        tok = Token.new("{", Position.new(col, row, filename), TokenType::LeftCurly)
+        tok = Token.new("{", current_position, TokenType::LeftCurly)
       when '}'
-        tok = Token.new("}", Position.new(col, row, filename), TokenType::RightCurly)
+        tok = Token.new("}", current_position, TokenType::RightCurly)
       when '('
-        tok = Token.new("(", Position.new(col, row, filename), TokenType::LeftParen)
+        tok = Token.new("(", current_position, TokenType::LeftParen)
       when ')'
-        tok = Token.new(")", Position.new(col, row, filename), TokenType::RightParen)
+        tok = Token.new(")", current_position, TokenType::RightParen)
       when '.'
-        tok = Token.new(".", Position.new(col, row, filename), TokenType::Point)
+        tok = Token.new(".", current_position, TokenType::Point)
       when '"'
         tok = consume_string
       when '0'..'9'
         tok = consume_numeric
       when 'A'..'Z', 'a'..'z'
-        tok = ident_or_keyword
+        return ident_or_keyword
       end
 
       consume
       tok
+    end
+
+    private def current_position : Position
+      Position.new(col, row, filename)
     end
 
     private def consume
@@ -178,31 +191,29 @@ module Funk
         consume # closing "
       end
 
-      Token.new(str, Position.new(col, row, filename), TokenType::String)
+      Token.new(str, current_position, TokenType::String)
     end
 
     private def ident_or_keyword : Token
       ident = ""
-      pos   = Position.new(col, row, filename)
+      pos   = current_position
 
       while valid_ident?
-        ident += current_char
+        ident += current_char.downcase
         consume
       end
 
-      ident = ident.downcase
-
-      return Token.new(ident, pos, TokenType::Keyword) if KEYWORDS.includes?(ident)
+      return Token.new(ident, pos, KEYWORDS[ident]) if KEYWORDS.has_key?(ident)
 
       Token.new(ident, pos, TokenType::Identifier)
     end
 
-    private def valid_ident? : Bool
-      current_char.letter? || VALID_IDENT_CHARS.includes?(current_char)
+    private def valid_ident?(char : Char = current_char) : Bool
+      char.letter? || VALID_IDENT_CHARS.includes?(char)
     end
 
     private def operator_or_assign(op : TokenType, raw : String) : Token
-      pos = Position.new(col, row, filename)
+      pos = current_position
 
       if peek_is?('=')
         consume
@@ -247,7 +258,7 @@ module Funk
     end
 
     private def is_ws? : Bool
-      current_char == ' ' || current_char == '\n' || current_char == '\t' || current_char == '\r'
+      current_char == ' ' || current_char == '\t' #|| current_char == '\r' || current_char == '\n'
     end
 
     private def consume_numeric : Token
