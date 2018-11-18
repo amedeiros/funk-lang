@@ -226,13 +226,28 @@ describe Funk::Lexer do
       token.raw.should eq "123345.456"
     end
 
+    it "should lex a negative number" do
+      token = Funk::Lexer.new("-123_345.456").next
+      token.type.should eq Funk::TokenType::Numeric
+      token.raw.should eq "-123345.456"
+    end
+
+    it "should lex multiple !" do
+      lex = Funk::Lexer.new("!!!")
+      [Funk::TokenType::Bang, Funk::TokenType::Bang,
+      Funk::TokenType::Bang, Funk::TokenType::EOF].each do |token_type|
+        token = lex.next
+        token.type.should eq token_type
+      end
+    end
+
     it "should lex a string" do
       val = "Some words 1234 !@#$%^&*() \n\t\r  "
       str = "\"#{val}\""
       token = Funk::Lexer.new(str).next
 
       token.type.should eq Funk::TokenType::String
-      token.raw.should eq val
+      token.raw.should eq str
     end
 
     Funk::Lexer::KEYWORDS.each do |keyword, token_type|

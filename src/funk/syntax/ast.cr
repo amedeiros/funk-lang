@@ -1,10 +1,8 @@
 module Funk
   abstract class Ast
-    property position : Position?
+    property token : Token
 
-    def at(@position)
-      self
-    end
+    def initialize(@token : Token) end
   end
 
   macro node(name, *properties)
@@ -13,7 +11,7 @@ module Funk
       property {{prop.id}}
     {% end %}
 
-      def initialize({{
+      def initialize(@token : Token, {{
                         *properties.map do |field|
                           "@#{field.var}".id
                         end
@@ -26,31 +24,25 @@ module Funk
   node Program, tree : Array(Ast)
 
   # Litterals
-  node Numeric,    token : Token, value : Float64
-  node StringNode, token : Token, value : String
-  node Identifier, token : Token, value : String
-  node Keyword,    value : String
-  node Boolean,    token : Token, value : Bool
+  node Numeric,    value : Float64
+  node StringNode, value : String
+  node Identifier, value : String
+  node Boolean,    value : Bool
 
-  node PrefixExpression, token : Token, operator : String, right : Ast
-  node InfixExpression, token : Token, left : Ast, operator : TokenType, right : Ast
+  node PrefixExpression, operator : String, right : Ast
+  node InfixExpression, left : Ast, operator : TokenType, right : Ast
   node Assignment, left  : Identifier, right : Ast
 
   node IfExpression,
-    token : Token,
     cond : Ast,
     consequence : Block,
-    alternative : Ast | Nil
-  
-  # node ClassStatement,
-  #   name : Identifier,
-  #   body : Block
+    alternative : Ast
 
-  node ReturnStatement, token : Token, expression : Ast
-  node DefStatement, token : Token, name : Identifier, value : Ast
-  node Lambda, token : Token, parameters : Array(Ast), body : Block
-  node Block, token : Token, statements : Array(Ast)
-  node ExpressionStatement, token : Token, expression : Ast
+  node ReturnStatement, expression : Ast
+  node DefStatement, name : Identifier, value : Ast
+  node Lambda, parameters : Array(Ast), body : Block
+  node Block, statements : Array(Ast)
+  node ExpressionStatement, expression : Ast
 
   node Null
   node LeftCurly

@@ -70,9 +70,12 @@ module Funk
       when '+'
         tok = operator_or_assign(TokenType::Plus, "+")
       when '-'
-        if (peek_is?('>'))
+        if peek_is?('>')
           consume
           tok = Token.new("->", current_position, TokenType::Lambda)
+        elsif peek.number?
+          consume
+          tok = consume_numeric(true)
         else
           tok = operator_or_assign(TokenType::Minus, "-")
         end
@@ -106,21 +109,21 @@ module Funk
           consume
           tok = Token.new("&&", current_position, TokenType::AND)
         else
-          raise UnexpectedToken.new(message: "Unexpected token: & #{col}:#{row}")
+          raise Errors::UnexpectedToken.new(message: "Unexpected token: & #{col}:#{row}")
         end
       when '|'
         if peek_is?('|')
           consume
           tok = Token.new("||", current_position, TokenType::OR)
         else
-          raise UnexpectedToken.new(message: "Unexpected token: & #{col}:#{row}")
+          raise Errors::UnexpectedToken.new(message: "Unexpected token: & #{col}:#{row}")
         end
       when '#'
         if peek_is?('t') || peek_is?('T') || peek_is?('f') || peek_is?('F')
           consume
           tok = Token.new("##{current_char.upcase}", current_position, TokenType::Boolean)
         else
-          raise UnexpectedToken.new(message: "Unexpected token: # #{col}:#{row}")
+          raise Errors::UnexpectedToken.new(message: "Unexpected token: #{current_char} #{col}:#{row}")
         end
       when '{'
         tok = Token.new("{", current_position, TokenType::LeftCurly)
@@ -135,7 +138,7 @@ module Funk
       when '"'
         tok = consume_string
       when '0'..'9'
-        tok = consume_numeric
+        return consume_numeric
       when 'A'..'Z', 'a'..'z'
         return ident_or_keyword
       end
@@ -163,7 +166,7 @@ module Funk
       start_row = row
 
       consume # opening "
-      str = ""
+      str = "\""
 
       while current_char != '"' && current_char != Funk::Reader::EOF
         if current_is?('\\')
@@ -186,11 +189,10 @@ module Funk
       end
 
       if current_char != '"'
-        raise UnexpectedToken.new("Expecting a closing \" found #{current_char} at #{col}:#{row} instead")
-      else
-        consume # closing "
+        raise Errors::UnexpectedToken.new("Expecting a closing \" found #{current_char} at #{col}:#{row} instead")
       end
 
+      str += '"'
       Token.new(str, current_position, TokenType::String)
     end
 
@@ -261,8 +263,9 @@ module Funk
       current_char == ' ' || current_char == '\t' #|| current_char == '\r' || current_char == '\n'
     end
 
-    private def consume_numeric : Token
-      numeric = ""
+    private def consume_numeric(negate : Bool = false) : Token
+      numeric = "-" if negate
+      numeric ||= ""
       start_col = col
       start_row = row
 

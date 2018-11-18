@@ -17,14 +17,14 @@ module Funk
         response = response.chomp.to_s if response
         response ||= ""
 
-        lex    = Funk::Lexer.new(response)
-        parser = Funk::Parser.new(lex)
+        begin
+          lex    = Funk::Lexer.new(response)
+          parser = Funk::Parser.new(lex)
 
-        parser.parse!
-        if parser.errors.empty?
+          parser.parse!
           puts parser.program.tree
-        else
-          puts parser.errors.join("\n")
+        rescue exc : Funk::Errors::StandardError
+          puts exc
         end
       end
     end

@@ -30,9 +30,13 @@ module Funk
 
     def peek : Char
       char = source.read_char
-      char = EOF unless char
 
-      source.pos -= 1
+      unless char
+        char = EOF
+      else
+        source.pos -= 1
+      end
+
       char
     end
 

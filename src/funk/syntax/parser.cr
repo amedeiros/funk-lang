@@ -8,7 +8,7 @@ module Funk
     property index     : Int32
     property errors    : Array(String)
     property prefix_parsers : Hash(TokenType, Proc(Ast))
-    property infix_parsers : Hash(TokenType, Proc(Ast, Ast))
+    property infix_parsers  : Hash(TokenType, Proc(Ast, Ast))
 
     enum Precedences
      LOWEST
@@ -35,22 +35,24 @@ module Funk
     } of TokenType => Precedences
 
     def initialize(@lexer, @lookahead = 3)
-      @tree   = [] of Ast
-      @tokens = [] of Token
-      @errors = [] of String
-      @program = Program.new([] of Ast)
+      @tree    = [] of Ast
+      @index   = 0
+      @tokens  = [] of Token
+      @errors  = [] of String
+      @program = Program.new(Token.root, [] of Ast)
       @prefix_parsers = {} of TokenType => Proc(Ast)
       @infix_parsers  = {} of TokenType => Proc(Ast, Ast)
-      @index  = 0
       prime
     end
 
-    def parse! : Void
+    def parse! : Parser
       while (!is_end?)
         statement = parse_statement
         @program.tree << statement if statement
         consume
       end
+
+      self
     end
 
     private def parse_statement : Ast
@@ -66,9 +68,9 @@ module Funk
 
     private def parse_def_statement : Ast
       def_token = current
-      return Null.new if !expect_peek!(TokenType::Identifier)
+      expected_exception!("IDENTIFIER") if !expect_peek!(TokenType::Identifier)
       name = Identifier.new(current, current.raw)
-      return Null.new if !expect_peek!(TokenType::Assignment)
+      expected_exception!("=") if !expect_peek!(TokenType::Assignment)
       consume
       value = parse_expression(Precedences::LOWEST)
 
@@ -144,16 +146,11 @@ module Funk
     end
 
     private def parse_expression(precedence : Precedences) : Ast
-      if prefix_parsers.has_key?(current.type)
-        prefix = prefix_parsers[current.type]
-      else
-        no_prefix_parser_block(current.type)
-        return Null.new
-      end
-
+      raise Errors::SyntaxError.new("No prefix parse block found for #{current.type} at #{current.position}") if !prefix_parsers.has_key?(current.type)
+      prefix         = prefix_parsers[current.type]
       leftExpression = prefix.call
 
-      while (!peek_token?(TokenType::NewLine) && precedence < precedence_peek)
+      while ((!peek_token?(TokenType::NewLine) || !peek_token?(TokenType::EOF)) && precedence < precedence_peek)
         infix = infix_parsers[peek.type]
         return leftExpression unless infix
         consume
@@ -169,11 +166,17 @@ module Funk
       precedence = current_precedence
       consume
       right = parse_expression(precedence)
-      InfixExpression.new(infix_token, left, infix_token.type, right)
-    end
 
-    private def no_prefix_parser_block(token_type : TokenType)
-      errors << "No prefix parse block found for #{token_type} at #{current.position}"
+      # Concat check
+      if infix_token.type == TokenType::Plus
+        if left.token.type == TokenType::String && right.token.type != TokenType::String
+          raise Errors::SyntaxError.new("Can only concat two strings #{right.token}")
+        elsif right.token.type == TokenType::String && left.token.type != TokenType::String
+          raise Errors::SyntaxError.new("Can only concat two strings #{left.token}")
+        end
+      end
+
+      InfixExpression.new(infix_token, left, infix_token.type, right)
     end
 
     private def peek_error(token_type : TokenType)
@@ -190,9 +193,7 @@ module Funk
         consume
       end
 
-      if !current_token_is?(TokenType::RightCurly)
-        raise Errors::ParseError.new("Expected } #{current.position} not #{peek}")
-      end
+      expected_exception!("}") if !current_token_is?(TokenType::RightCurly)
 
       Block.new(block_token, statements)
     end
@@ -210,10 +211,7 @@ module Funk
           params << Identifier.new(current, current.raw)
         end
 
-        if !expect_peek!(TokenType::RightParen)
-          raise Errors::ParseError.new("Expected ) #{current.position} not #{peek}")
-        end
-
+        expected_exception!(")") if !expect_peek!(TokenType::RightParen)
       else
         consume # closing )
       end
@@ -221,88 +219,106 @@ module Funk
       params
     end
 
+    private def expected_exception!(expected : String)
+      raise Errors::SyntaxError.new("Expected #{expected} #{current.position} not #{peek}")
+    end
+
+    private def unexpected_exception!(unexpected : String)
+      raise Errors::SyntaxError.new("Unexpected #{unexpected} #{current.position}")
+    end
+
+    private def raise_unexpected_any!(ast : Ast, token_types : Array(TokenType)) : Ast
+      raise unexpected_exception!(peek.raw) if token_types.includes?(peek.type)
+      ast
+    end
+
     private def load_prefix_blocks
-      # Prefix's
+      # Identifier
       register_prefix(TokenType::Identifier) { Identifier.new(current, current.raw) }
-      register_prefix(TokenType::Numeric)    { Numeric.new(current, current.raw.to_f) }
+
+      # Numeric
+      register_prefix(TokenType::Numeric) do 
+        raise_unexpected_any! Numeric.new(current, current.raw.to_f),
+                              [TokenType::Numeric, TokenType::Identifier,
+                              TokenType::String, TokenType::Boolean]
+      end
+
+      # String
+      register_prefix(TokenType::String) do
+        raise_unexpected_any! StringNode.new(current, current.raw.to_s), 
+                              [TokenType::Numeric, TokenType::Identifier,
+                              TokenType::String, TokenType::Boolean]
+      end
+
+      # Boolean
+      register_prefix(TokenType::Boolean) do 
+        raise_unexpected_any! Boolean.new(current, current.raw.upcase == "#T"),
+                              [TokenType::Numeric, TokenType::Identifier,
+                              TokenType::String, TokenType::Boolean]
+      end
 
       # Bang and Minus
       [TokenType::Bang, TokenType::Minus].each do |token_type|
         register_prefix token_type do
           prefix_token = current
-          prefix_raw    = prefix_token.raw
+          prefix_raw   = prefix_token.raw
           consume
+          raise unexpected_exception!("EOF") if current_token_is?(TokenType::EOF)
+          raise unexpected_exception!("!") if token_type == TokenType::Bang && current_token_is?(TokenType::Bang)
+          raise unexpected_exception!("-") if token_type == TokenType::Minus && current_token_is?(TokenType::Minus)
+
+          if token_type == TokenType::Minus &&
+              !current_token_is?(TokenType::Numeric) &&
+              !current_token_is?(TokenType::Identifier)
+            raise unexpected_exception!(current.raw)
+          end
           right = parse_expression(Precedences::PREFIX)
 
           PrefixExpression.new(prefix_token, prefix_raw, right)
         end
       end
 
-      # Boolean
-      register_prefix(TokenType::Boolean) { Boolean.new(current, current.raw.upcase == "#T") }
-
       # Left Paren
       register_prefix TokenType::LeftParen do
         consume
         expression = parse_expression(Precedences::LOWEST)
         
-        if !expect_peek!(TokenType::RightParen)
-          expresson = Null.new
-        end
+        expected_exception!(")") if !expect_peek!(TokenType::RightParen)
 
         expression
       end
 
       # If expression
       register_prefix TokenType::If do
-        # expression = IfExpression.new(current)
         expression_token = current
 
-        if !expect_peek!(TokenType::LeftParen)
-          Null.new 
+        expected_exception!("(") if !expect_peek!(TokenType::LeftParen)
+        consume
+        cond = parse_expression(Precedences::LOWEST)
+
+        expected_exception!(")") if !expect_peek!(TokenType::RightParen)
+        expected_exception!("{") if !expect_peek!(TokenType::LeftCurly)
+
+        consequence = parse_block_statement
+
+        if peek_token?(TokenType::ElsIf) || peek_token?(TokenType::Else)
+          alternative = prefix_parsers[TokenType::If].call # call this block again
         else
-          consume
-          cond = parse_expression(Precedences::LOWEST)
-
-          if !expect_peek!(TokenType::RightParen)
-            errors << "Missing expected ) at #{current.position}"
-          end
-
-          if errors.empty?
-            if !expect_peek!(TokenType::LeftCurly)
-              errors << "Missing expected { at #{current.position}"
-              Null.new
-            else
-              consequence = parse_block_statement
-
-              if peek_token?(TokenType::ElsIf) || peek_token?(TokenType::Else)
-                alternative = prefix_parsers[TokenType::If].call # call this block again
-              else
-                alternative = nil
-              end
-
-              IfExpression.new(expression_token, cond, consequence, alternative)
-            end
-          else
-            Null.new
-          end
+          alternative = Null.new(current)
         end
+
+        IfExpression.new(expression_token, cond, consequence, alternative)
       end
 
       register_prefix TokenType::Lambda do
         current_lambda_token = current
 
-        if !expect_peek!(TokenType::LeftParen)
-          Null.new
-        else
-          parameters = parse_lambda_parameters
-          if !expect_peek!(TokenType::LeftCurly)
-            Null.new
-          else
-            body = parse_block_statement
-            Lambda.new(current_lambda_token, parameters, body)
-          end
-        end
+        expected_exception!("(") if !expect_peek!(TokenType::LeftParen)
+        parameters = parse_lambda_parameters
+        expected_exception!("{") if !expect_peek!(TokenType::LeftCurly)
+
+        body = parse_block_statement
+        Lambda.new(current_lambda_token, parameters, body)
       end
     end
     

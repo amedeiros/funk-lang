@@ -10,6 +10,10 @@ module Funk
     def initialize(@raw : String, @position = position, @type = TokenType::Unknown)
     end
 
+    def self.root : Token
+      Token.new("ROOT", Position.new(-1, -1))
+    end
+
     def to_s(io)
       io << self.type << ", " << raw << " " << position
     end

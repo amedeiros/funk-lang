@@ -1,6 +1,7 @@
 module Funk
   module Errors
-    class ParseError < Exception
-    end
+    class StandardError < Exception end
+    class SyntaxError < StandardError end
+    class UnexpectedToken < StandardError end
   end
 end
