@@ -55,7 +55,6 @@ module Funk
     RightParen
     Comment
     Point
-    NewLine
     Comma
 
     # Misc

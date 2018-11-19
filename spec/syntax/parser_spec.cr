@@ -13,6 +13,13 @@ describe Funk::Parser do
       exp.right.token.raw.should  eq right
     end
 
+    it "should parse lambda expression" do
+      "TDOO!".should eq "This test!"
+      exp = "-> (x, y, z) {\n x+y + z\n}"
+      parser = new_parser(exp).parse!
+      puts parser.program.tree
+    end
+
     it "should parse a number" do
       parser = new_parser("100").parse!
 

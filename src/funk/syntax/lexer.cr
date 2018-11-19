@@ -49,8 +49,6 @@ module Funk
       tok = Token.new(current_char.to_s, current_position, TokenType::Unknown)
 
       case current_char
-      when '\n', '\r'
-        tok = Token.new("", current_position, TokenType::NewLine)
       when '\0'
         tok = Token.new("", current_position, TokenType::EOF)
       when ','
@@ -260,7 +258,7 @@ module Funk
     end
 
     private def is_ws? : Bool
-      current_char == ' ' || current_char == '\t' #|| current_char == '\r' || current_char == '\n'
+      current_char == ' ' || current_char == '\t' || current_char == '\r' || current_char == '\n'
     end
 
     private def consume_numeric(negate : Bool = false) : Token

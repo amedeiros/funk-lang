@@ -5,11 +5,21 @@ module Funk
     def initialize(@token : Token) end
   end
 
+  abstract class Visitor(T) end
+
   macro node(name, *properties)
+    abstract class Funk::Visitor(T)
+      abstract def visit_{{name.id.underscore.downcase}}(exp : {{name.id}}) : T
+    end
+
     class {{name.id}} < Ast
     {% for prop in properties %}
       property {{prop.id}}
     {% end %}
+
+      def accept(visitor : Visitor)
+        visitor.visit_{{name.id.underscore.downcase}}(self)
+      end
 
       def initialize(@token : Token, {{
                         *properties.map do |field|
@@ -29,9 +39,9 @@ module Funk
   node Identifier, value : String
   node Boolean,    value : Bool
 
+  node CallExpression, name : Identifier, arguments : Array(Ast)
   node PrefixExpression, operator : String, right : Ast
   node InfixExpression, left : Ast, operator : TokenType, right : Ast
-  node Assignment, left  : Identifier, right : Ast
 
   node IfExpression,
     cond : Ast,
@@ -45,8 +55,8 @@ module Funk
   node ExpressionStatement, expression : Ast
 
   node Null
-  node LeftCurly
-  node RightCurly
-  node LeftParen
-  node RightParen
+  # node LeftCurly
+  # node RightCurly
+  # node LeftParen
+  # node RightParen
 end

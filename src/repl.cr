@@ -10,6 +10,7 @@ module Funk
 
     def run
       response = ""
+      printer  = Funk::AstSchemePrinter.new
 
       while response != "exit"
         prompt
@@ -21,16 +22,23 @@ module Funk
           lex    = Funk::Lexer.new(response)
           parser = Funk::Parser.new(lex)
 
-          parser.parse!
-          puts parser.program.tree
+          puts printer.visit_program(parser.parse!.program)
         rescue exc : Funk::Errors::StandardError
-          puts exc
+          print_exception(exc)
+        rescue exc : Exception
+          print_exception(exc, "Found a bug in Funk!")
         end
       end
     end
 
     def prompt
       print "Funk #{count}> "
+    end
+
+    def print_exception(exc : Exception, msg : String = "")
+      puts msg unless msg.empty?
+      puts exc
+      puts exc.backtrace.join("\n")
     end
   end
 end

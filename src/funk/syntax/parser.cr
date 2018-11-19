@@ -150,7 +150,7 @@ module Funk
       prefix         = prefix_parsers[current.type]
       leftExpression = prefix.call
 
-      while ((!peek_token?(TokenType::NewLine) || !peek_token?(TokenType::EOF)) && precedence < precedence_peek)
+      while (!peek_token?(TokenType::EOF) && precedence < precedence_peek)
         infix = infix_parsers[peek.type]
         return leftExpression unless infix
         consume
@@ -187,13 +187,14 @@ module Funk
       block_token = current
       statements  = [] of Ast
       consume
-
-      while (!peek_token?(TokenType::RightParen) && !peek_token?(TokenType::EOF))
+      
+      while (!current_token_is?(TokenType::RightCurly) && !current_token_is?(TokenType::EOF))
         statements.push parse_statement
         consume
       end
 
       expected_exception!("}") if !current_token_is?(TokenType::RightCurly)
+      consume
 
       Block.new(block_token, statements)
     end
@@ -217,6 +218,23 @@ module Funk
       end
 
       params
+    end
+
+    private def parse_call_arguments : Array(Ast)
+      args = [] of Ast
+      return args if peek_token?(TokenType::RightParen)
+      consume
+      args << parse_expression(Precedences::LOWEST)
+
+      while peek_token?(TokenType::Comma)
+        consume
+        consume
+        args << parse_expression(Precedences::LOWEST)
+      end
+
+      expected_exception!(")") if !expect_peek!(TokenType::RightParen)
+
+      args
     end
 
     private def expected_exception!(expected : String)
@@ -292,22 +310,39 @@ module Funk
       register_prefix TokenType::If do
         expression_token = current
 
-        expected_exception!("(") if !expect_peek!(TokenType::LeftParen)
-        consume
-        cond = parse_expression(Precedences::LOWEST)
+        # Else may or may not have ()
+        if expression_token.type == TokenType::Else
+          if peek_token?(TokenType::LeftParen)
+            consume
+            expected_exception!(")") unless expect_peek!(TokenType::RightParen)
+          end
+        elsif !expect_peek!(TokenType::LeftParen)
+          expected_exception!("(")
+        end
 
-        expected_exception!(")") if !expect_peek!(TokenType::RightParen)
-        expected_exception!("{") if !expect_peek!(TokenType::LeftCurly)
+        # Else does not have a condition
+        if expression_token.type != TokenType::Else
+          consume
+          cond = parse_expression(Precedences::LOWEST)
+        end
+
+        # Already handled Elses possible closing ) above
+        if expression_token.type != TokenType::Else && !expect_peek!(TokenType::RightParen)
+          expected_exception!(")")
+        end
+
+        # Everything has a {
+        expected_exception!("{") unless expect_peek!(TokenType::LeftCurly)
 
         consequence = parse_block_statement
 
-        if peek_token?(TokenType::ElsIf) || peek_token?(TokenType::Else)
+        if current_token_is?(TokenType::ElsIf) || current_token_is?(TokenType::Else)
           alternative = prefix_parsers[TokenType::If].call # call this block again
         else
           alternative = Null.new(current)
         end
 
-        IfExpression.new(expression_token, cond, consequence, alternative)
+        IfExpression.new(expression_token, cond || Null.new(expression_token), consequence, alternative)
       end
 
       register_prefix TokenType::Lambda do
@@ -328,6 +363,15 @@ module Funk
       TokenType::Equal, TokenType::NotEqual, TokenType::LessThan,TokenType::GreaterThan,
       TokenType::LessEqual, TokenType::GreaterEqual].each do |infix|
         register_infix(infix) { |x| parse_infix_expression(x) }
+      end
+
+      # Function call
+      register_infix TokenType::LeftParen do |func_expression|
+        call_token = current
+        arguments  = parse_call_arguments
+
+        puts "Before CallExpression: #{func_expression}"
+        CallExpression.new(call_token, func_expression.as(Funk::Identifier), arguments)
       end
     end
 
