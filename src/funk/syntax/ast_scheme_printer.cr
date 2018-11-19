@@ -84,9 +84,7 @@ module Funk
     end
 
     private def parenthesize(name : String, *exprs) : String
-      prog = "(#{name}"
-      exprs.each { |x| prog += " #{x.accept(self)}" }
-      prog += ")"
+      parenthesize(name, exprs.to_a)
     end
 
     private def parenthesize(name : String, exprs : Array(Ast)) : String
