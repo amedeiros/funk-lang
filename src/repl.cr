@@ -32,6 +32,7 @@ module Funk
     end
 
     def prompt
+      @count += 1
       print "Funk #{count}> "
     end
 

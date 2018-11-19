@@ -368,9 +368,14 @@ module Funk
       # Function call
       register_infix TokenType::LeftParen do |func_expression|
         call_token = current
-        arguments  = parse_call_arguments
 
-        puts "Before CallExpression: #{func_expression}"
+        if peek_token?(TokenType::RightParen)
+          consume
+          arguments = [] of Ast
+        else
+          arguments  = parse_call_arguments
+        end
+
         CallExpression.new(call_token, func_expression.as(Funk::Identifier), arguments)
       end
     end
