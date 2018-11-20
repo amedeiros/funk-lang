@@ -2,7 +2,7 @@ require "./funk"
 
 module Funk
   class Repl
-    property count : Int32 = 0
+    property count : Int32 = -1
 
     def self.run
       Repl.new.run

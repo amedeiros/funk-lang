@@ -23,22 +23,29 @@ module Funk
     end
 
     def visit_prefix_expression(exp : Funk::PrefixExpression) : String
-      case exp.operator
-      when "!"
-        parenthesize("not", exp.right)
-      else
-        parenthesize(exp.operator, exp.right)
-      end
+      return parenthesize("not", exp.right) if exp.operator == "!"
+      parenthesize(exp.operator, exp.right)
     end
 
     def visit_infix_expression(exp : Funk::InfixExpression) : String
+      return parenthesize("=", exp.left, exp.right) if exp.operator.is_a?(Funk::TokenType::Equal)
       parenthesize(exp.token.raw, exp.left, exp.right)
     end
 
     def visit_if_expression(exp : Funk::IfExpression) : String
-      cond = exp.cond.accept(self)
-      cond_statement = parenthesize("cond (#{cond}", exp.consequence)
-      alt = exp.alternative.as(Funk::IfExpression)
+      if exp.token.type.is_a?(Funk::TokenType::Unless)
+        cond = "(not #{exp.cond.accept(self)})"
+        cond_statement = parenthesize("cond (#{cond}", exp.consequence)
+      else
+        cond = exp.cond.accept(self)
+        cond_statement = parenthesize("cond (#{cond}", exp.consequence)
+      end
+
+      if exp.alternative.is_a?(Funk::IfExpression)
+        alt = exp.alternative.as(Funk::IfExpression)
+      else
+        alt = nil
+      end
 
       while alt.is_a?(Funk::IfExpression)
         # Else check

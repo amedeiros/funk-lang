@@ -11,3 +11,6 @@
 example.funk
 .DS_STORE
 .vscode/
+cli
+cli.dwarf
+

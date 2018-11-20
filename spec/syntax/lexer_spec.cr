@@ -281,5 +281,18 @@ describe Funk::Lexer do
 
       token.type.should eq Funk::TokenType::Unknown
     end
+
+    it "should lex multiple lines" do
+      code = "
+      apples
+      1
+      \"a string\"
+      "
+      lexer = Funk::Lexer.new(code)
+      {Funk::TokenType::Identifier, Funk::TokenType::Numeric, 
+      Funk::TokenType::String, Funk::TokenType::EOF}.each do |token_type|
+        lexer.next.type.should eq token_type
+      end
+    end
   end
 end

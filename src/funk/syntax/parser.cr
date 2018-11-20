@@ -194,7 +194,6 @@ module Funk
       end
 
       expected_exception!("}") if !current_token_is?(TokenType::RightCurly)
-      consume
 
       Block.new(block_token, statements)
     end
@@ -276,7 +275,7 @@ module Funk
       end
 
       # Bang and Minus
-      [TokenType::Bang, TokenType::Minus].each do |token_type|
+      {TokenType::Bang, TokenType::Minus}.each do |token_type|
         register_prefix token_type do
           prefix_token = current
           prefix_raw   = prefix_token.raw
@@ -307,42 +306,47 @@ module Funk
       end
 
       # If expression
-      register_prefix TokenType::If do
-        expression_token = current
+      {TokenType::If, TokenType::Unless}.each do |token_type|
+        register_prefix token_type do
+          expression_token = current
 
-        # Else may or may not have ()
-        if expression_token.type == TokenType::Else
-          if peek_token?(TokenType::LeftParen)
-            consume
-            expected_exception!(")") unless expect_peek!(TokenType::RightParen)
+          # Else may or may not have ()
+          if expression_token.type == TokenType::Else
+            if peek_token?(TokenType::LeftParen)
+              consume
+              expected_exception!(")") unless expect_peek!(TokenType::RightParen)
+            end
+          elsif !expect_peek!(TokenType::LeftParen)
+            expected_exception!("(")
           end
-        elsif !expect_peek!(TokenType::LeftParen)
-          expected_exception!("(")
+
+          # Else does not have a condition
+          if expression_token.type != TokenType::Else
+            consume
+            cond = parse_expression(Precedences::LOWEST)
+          end
+
+          # Already handled Elses possible closing ) above
+          if expression_token.type != TokenType::Else && !expect_peek!(TokenType::RightParen)
+            expected_exception!(")")
+          end
+
+          # Everything has a {
+          expected_exception!("{") unless expect_peek!(TokenType::LeftCurly)
+
+          consequence = parse_block_statement
+
+          expected_exception!("}") unless current_token_is?(TokenType::RightCurly)
+
+          if peek_token?(TokenType::ElsIf) || peek_token?(TokenType::Else)
+            consume # Closing }
+            alternative = prefix_parsers[TokenType::If].call # call this block again
+          else
+            alternative = Null.new(current)
+          end
+
+          IfExpression.new(expression_token, cond || Null.new(expression_token), consequence, alternative)
         end
-
-        # Else does not have a condition
-        if expression_token.type != TokenType::Else
-          consume
-          cond = parse_expression(Precedences::LOWEST)
-        end
-
-        # Already handled Elses possible closing ) above
-        if expression_token.type != TokenType::Else && !expect_peek!(TokenType::RightParen)
-          expected_exception!(")")
-        end
-
-        # Everything has a {
-        expected_exception!("{") unless expect_peek!(TokenType::LeftCurly)
-
-        consequence = parse_block_statement
-
-        if current_token_is?(TokenType::ElsIf) || current_token_is?(TokenType::Else)
-          alternative = prefix_parsers[TokenType::If].call # call this block again
-        else
-          alternative = Null.new(current)
-        end
-
-        IfExpression.new(expression_token, cond || Null.new(expression_token), consequence, alternative)
       end
 
       register_prefix TokenType::Lambda do
@@ -359,9 +363,9 @@ module Funk
     
 
     private def load_infix_blocks
-      [TokenType::Plus, TokenType::Minus, TokenType::Multiply, TokenType::Divide, 
+      {TokenType::Plus, TokenType::Minus, TokenType::Multiply, TokenType::Divide, 
       TokenType::Equal, TokenType::NotEqual, TokenType::LessThan,TokenType::GreaterThan,
-      TokenType::LessEqual, TokenType::GreaterEqual].each do |infix|
+      TokenType::LessEqual, TokenType::GreaterEqual}.each do |infix|
         register_infix(infix) { |x| parse_infix_expression(x) }
       end
 

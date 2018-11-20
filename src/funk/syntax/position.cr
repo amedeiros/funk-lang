@@ -7,7 +7,7 @@ module Funk
     end
 
     def to_s(io)
-      io << "#{col}:#{row} #{filename}"
+      io << "#{row}:#{col} #{filename}"
     end
   end
 end

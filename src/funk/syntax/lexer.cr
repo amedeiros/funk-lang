@@ -153,7 +153,7 @@ module Funk
       reader.read_char
       @col += 1
 
-      if current_char == '\n'
+      if current_char == '\n' || current_char == '\r'
         @col = 0
         @row += 1
       end

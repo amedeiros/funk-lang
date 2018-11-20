@@ -14,10 +14,184 @@ describe Funk::Parser do
     end
 
     it "should parse lambda expression" do
-      "TDOO!".should eq "This test!"
-      exp = "-> (x, y, z) {\n x+y + z\n}"
+      expected_params = {"x", "y", "z"}
+      code   = "-> (x, y, z) {\n x + y * z\n}"
+      parser = new_parser(code).parse!
+      exp    = parser.program.tree.first.as(Funk::ExpressionStatement)
+      lambda = exp.expression.as(Funk::Lambda)
+      params = lambda.parameters
+      body   = lambda.body
+
+      # Params check
+      params.each_with_index do |param, index|
+        ident = param.as(Funk::Identifier)
+        expected_params[index].should eq ident.value
+      end
+
+      # Body check
+      statement = body.statements.first.as(Funk::ExpressionStatement)
+      body_exp  = statement.expression.as(Funk::InfixExpression)
+
+      # Left
+      body_exp.operator.should eq Funk::TokenType::Plus
+      body_exp.left.as(Funk::Identifier).value.should eq "x"
+
+      # Right another infix
+      right_exp = body_exp.right.as(Funk::InfixExpression)
+      right_exp.operator.should eq Funk::TokenType::Multiply
+      right_exp.left.as(Funk::Identifier).value.should eq "y"
+      right_exp.right.as(Funk::Identifier).value.should eq "z"
+    end
+
+    it "should parse a def lambda expression" do
+      expected_params = {"x", "y", "z"}
+      code   = "def my_func = -> (x, y, z) {\n x + y * z\n}"
+      parser = new_parser(code).parse!
+      exp    = parser.program.tree.first.as(Funk::DefStatement)
+      lambda = exp.value.as(Funk::Lambda)
+      name   = exp.name.as(Funk::Identifier)
+      params = lambda.parameters
+      body   = lambda.body
+
+      # Func name
+      name.value.should eq "my_func"
+
+      # Lambda check
+
+      # Params check
+      params.each_with_index do |param, index|
+        ident = param.as(Funk::Identifier)
+        expected_params[index].should eq ident.value
+      end
+
+      # Body check
+      statement = body.statements.first.as(Funk::ExpressionStatement)
+      body_exp  = statement.expression.as(Funk::InfixExpression)
+
+      # Left
+      body_exp.operator.should eq Funk::TokenType::Plus
+      body_exp.left.as(Funk::Identifier).value.should eq "x"
+
+      # Right another infix
+      right_exp = body_exp.right.as(Funk::InfixExpression)
+      right_exp.operator.should eq Funk::TokenType::Multiply
+      right_exp.left.as(Funk::Identifier).value.should eq "y"
+      right_exp.right.as(Funk::Identifier).value.should eq "z"
+    end
+
+    it "should parse an if statement" do
+      code   = "if (x > 1) {\n x + 1 \n}"
+      parser = new_parser(code).parse!
+      exp    = parser.program.tree.first.as(Funk::ExpressionStatement)
+      if_exp = exp.expression.as(Funk::IfExpression)
+
+      if_exp.alternative.is_a?(Funk::Null).should be_true
+      if_cond = if_exp.cond.as(Funk::InfixExpression)
+
+      if_cond.operator.should eq Funk::TokenType::GreaterThan
+      if_cond.left.as(Funk::Identifier).value.should eq "x"
+      if_cond.right.as(Funk::Numeric).value.should eq 1.0
+
+      if_consequence = if_exp.consequence.as(Funk::Block)
+      if_exp_body    = if_consequence.statements.first.as(Funk::ExpressionStatement)
+      if_infix_body  = if_exp_body.expression.as(Funk::InfixExpression)
+
+      if_infix_body.operator.should eq Funk::TokenType::Plus
+      if_infix_body.left.as(Funk::Identifier).value.should eq "x"
+      if_infix_body.right.as(Funk::Numeric).value.should eq 1.0
+    end
+
+    it "should parse an if/else statement" do
+      code   = "if (x > 1) {\n x + 1 \n} else { x - 1 }"
+      parser = new_parser(code).parse!
+      exp    = parser.program.tree.first.as(Funk::ExpressionStatement)
+      if_exp = exp.expression.as(Funk::IfExpression)
+
+      # IF
+      if_cond = if_exp.cond.as(Funk::InfixExpression)
+      if_cond.operator.should eq Funk::TokenType::GreaterThan
+      if_cond.left.as(Funk::Identifier).value.should eq "x"
+      if_cond.right.as(Funk::Numeric).value.should eq 1.0
+
+      if_consequence = if_exp.consequence.as(Funk::Block)
+      if_exp_body    = if_consequence.statements.first.as(Funk::ExpressionStatement)
+      if_infix_body  = if_exp_body.expression.as(Funk::InfixExpression)
+
+      if_infix_body.operator.should eq Funk::TokenType::Plus
+      if_infix_body.left.as(Funk::Identifier).value.should eq "x"
+      if_infix_body.right.as(Funk::Numeric).value.should eq 1.0
+
+      # ELSE
+      if_exp.alternative.is_a?(Funk::IfExpression).should be_true
+      else_exp = if_exp.alternative.as(Funk::IfExpression)
+      else_exp.alternative.is_a?(Funk::Null).should be_true
+
+      else_consequence  = else_exp.consequence.as(Funk::Block)
+      else_exp_body     = else_consequence.statements.first.as(Funk::ExpressionStatement)
+      else_infix_body   = else_exp_body.expression.as(Funk::InfixExpression)
+
+      else_infix_body.operator.should eq Funk::TokenType::Minus
+      else_infix_body.left.as(Funk::Identifier).value.should eq "x"
+      else_infix_body.right.as(Funk::Numeric).value.should eq 1.0
+    end
+
+    it "should parse an if/elsif/else statement" do
+      code   = "if (x > 1) {\n x + 1 \n} elsif(x < 1) {\n x + 2 \n} else {\n x - 1 \n}"
+      parser = new_parser(code).parse!
+      exp    = parser.program.tree.first.as(Funk::ExpressionStatement)
+      if_exp = exp.expression.as(Funk::IfExpression)
+
+      # IF
+      if_cond = if_exp.cond.as(Funk::InfixExpression)
+      if_cond.operator.should eq Funk::TokenType::GreaterThan
+      if_cond.left.as(Funk::Identifier).value.should eq "x"
+      if_cond.right.as(Funk::Numeric).value.should eq 1.0
+
+      if_consequence = if_exp.consequence.as(Funk::Block)
+      if_exp_body    = if_consequence.statements.first.as(Funk::ExpressionStatement)
+      if_infix_body  = if_exp_body.expression.as(Funk::InfixExpression)
+
+      if_infix_body.operator.should eq Funk::TokenType::Plus
+      if_infix_body.left.as(Funk::Identifier).value.should eq "x"
+      if_infix_body.right.as(Funk::Numeric).value.should eq 1.0
+
+      # ELSE IF
+      if_exp.alternative.is_a?(Funk::IfExpression).should be_true
+      elsif_exp = if_exp.alternative.as(Funk::IfExpression)
+      elsif_cond = elsif_exp.cond.as(Funk::InfixExpression)
+      elsif_cond.operator.should eq Funk::TokenType::LessThan
+      elsif_cond.left.as(Funk::Identifier).value.should eq "x"
+      elsif_cond.right.as(Funk::Numeric).value.should eq 1.0
+
+      elsif_consequence = elsif_exp.consequence.as(Funk::Block)
+      elsif_exp_body = elsif_consequence.statements.first.as(Funk::ExpressionStatement)
+      elsif_infix_body  = elsif_exp_body.expression.as(Funk::InfixExpression)
+
+      elsif_infix_body.operator.should eq Funk::TokenType::Plus
+      elsif_infix_body.left.as(Funk::Identifier).value.should eq "x"
+      elsif_infix_body.right.as(Funk::Numeric).value.should eq 2.0
+
+      # ELSE
+      elsif_exp.alternative.is_a?(Funk::IfExpression).should be_true
+      else_exp = elsif_exp.alternative.as(Funk::IfExpression)
+      else_exp.alternative.is_a?(Funk::Null).should be_true
+
+      else_consequence  = else_exp.consequence.as(Funk::Block)
+      else_exp_body     = else_consequence.statements.first.as(Funk::ExpressionStatement)
+      else_infix_body   = else_exp_body.expression.as(Funk::InfixExpression)
+
+      else_infix_body.operator.should eq Funk::TokenType::Minus
+      else_infix_body.left.as(Funk::Identifier).value.should eq "x"
+      else_infix_body.right.as(Funk::Numeric).value.should eq 1.0
+    end
+
+    it "should parse multiple lines" do
+      exp = "def add_one = -> (x) { return x + 1 }
+      
+def result  = display(add_one(add_one(1)))
+      "
+
       parser = new_parser(exp).parse!
-      puts parser.program.tree
     end
 
     it "should parse a number" do
@@ -35,7 +209,7 @@ describe Funk::Parser do
     end
 
     it "should parse booleans" do
-      ["#T", "#f"].each do |bool|
+      {"#T", "#f"}.each do |bool|
         parser = new_parser(bool).parse!
 
         exp = parser.program.tree[0].as(Funk::ExpressionStatement)

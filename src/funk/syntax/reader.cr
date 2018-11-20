@@ -1,6 +1,6 @@
 module Funk
   class Reader
-    property source  : IO::Memory
+    property source  : IO
     property buffer  : IO::Memory
     property pos     : Int32
     property current : Char
