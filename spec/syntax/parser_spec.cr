@@ -185,6 +185,22 @@ describe Funk::Parser do
       else_infix_body.right.as(Funk::Numeric).value.should eq 1.0
     end
 
+    it "should parse a func call" do
+      expected_args = {"x", "y"}
+      code   = "my_func(x, y)"
+      parser = new_parser(code).parse!
+      
+      exp       = parser.program.tree.first.as(Funk::ExpressionStatement)
+      call_exp  = exp.expression.as(Funk::CallExpression)
+      func_name = call_exp.name.as(Funk::Identifier)
+      func_args = call_exp.arguments
+
+      func_name.value.should eq "my_func"
+      func_args.each_with_index do |arg, index|
+        arg.as(Funk::Identifier).value.should eq expected_args[index]
+      end
+    end
+
     it "should parse multiple lines" do
       exp = "def add_one = -> (x) { return x + 1 }
       
