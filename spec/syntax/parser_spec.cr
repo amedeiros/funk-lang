@@ -296,5 +296,19 @@ def result  = display(add_one(add_one(1)))
       expect_raises(Funk::Errors::SyntaxError) { new_parser("#{string} + 1").parse! }
       expect_raises(Funk::Errors::SyntaxError) { new_parser("1 + #{string}").parse! }
     end
+
+    it "should raise an error for missing structure" do
+      # Lambdas
+      expect_raises(Funk::Errors::SyntaxError, /Expected \(/) { new_parser("-> x) { x + 1}").parse! }
+      expect_raises(Funk::Errors::SyntaxError, /Expected \)/) { new_parser("-> (x { x + 1}").parse! }
+      expect_raises(Funk::Errors::SyntaxError, /Expected \{/) { new_parser("-> (x)  x + 1}").parse! }
+      expect_raises(Funk::Errors::SyntaxError, /Expected \}/) { new_parser("-> (x) { x + 1").parse! }
+
+      # If expressions
+      expect_raises(Funk::Errors::SyntaxError, /Expected \(/) { new_parser("if x > 1) { x + 1 }").parse! }
+      expect_raises(Funk::Errors::SyntaxError, /Expected \)/) { new_parser("if (x > 1 { x + 1 }").parse! }
+      expect_raises(Funk::Errors::SyntaxError, /Expected \{/) { new_parser("if (x > 1)  x + 1 }").parse! }
+      expect_raises(Funk::Errors::SyntaxError, /Expected \}/) { new_parser("if (x > 1) { x + 1 ").parse! }
+    end
   end
 end
