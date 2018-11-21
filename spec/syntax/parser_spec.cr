@@ -261,16 +261,18 @@ def result  = display(add_one(add_one(1)))
       exp.token.type.should eq Funk::TokenType::Identifier
     end
 
-    it "should parse a def statement" do
-      parser = new_parser("def a = 1").parse!
-      exp = parser.program.tree[0].as(Funk::DefStatement)
+    it "should parse def statements with different infix operators" do
+      {"=", "+=", "-=", "/=", "*=", "**="}.each do |infix_op|
+        parser = new_parser("def a #{infix_op} 1").parse!
+        exp = parser.program.tree[0].as(Funk::DefStatement)
 
-      exp.name.token.type.should eq Funk::TokenType::Identifier
-      exp.name.value.should eq "a" 
+        exp.name.token.type.should eq Funk::TokenType::Identifier
+        exp.name.value.should eq "a" 
 
-      num = exp.value.as(Funk::Numeric)
-      num.token.type.should eq Funk::TokenType::Numeric
-      num.value.should eq 1
+        num = exp.value.as(Funk::Numeric)
+        num.token.type.should eq Funk::TokenType::Numeric
+        num.value.should eq 1
+      end
     end
 
     it "should parse a string" do
@@ -338,6 +340,14 @@ def result  = display(add_one(add_one(1)))
       expect_raises(Funk::Errors::SyntaxError, /Expected \)/) { new_parser("if (x > 1 { x + 1 }").parse! }
       expect_raises(Funk::Errors::SyntaxError, /Expected \{/) { new_parser("if (x > 1)  x + 1 }").parse! }
       expect_raises(Funk::Errors::SyntaxError, /Expected \}/) { new_parser("if (x > 1) { x + 1 ").parse! }
+    end
+
+    it "should raise an error for an infix assignment with a lambda other than =" do
+      {"+=", "-=", "/=", "*=", "**="}.each do |infix_op|
+        expect_raises(Funk::Errors::SyntaxError) do
+          new_parser("def #{infix_op} -> (x) { return x + 1 }").parse!
+        end
+      end
     end
   end
 end

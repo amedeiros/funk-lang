@@ -34,6 +34,15 @@ module Funk
       TokenType::LeftParen    => Precedences::CALL,
     } of TokenType => Precedences
 
+    VALID_INFIX_ASSIGNMENTS = {
+      TokenType::Assignment,
+      TokenType::PlusAssign,
+      TokenType::MinusAssign,
+      TokenType::MultiplyAssign,
+      TokenType::DivideAssign,
+      TokenType::PowerAssign,
+    }
+
     def initialize(@lexer, @lookahead = 3)
       @tree    = [] of Ast
       @index   = 0
@@ -70,9 +79,15 @@ module Funk
       def_token = current
       expected_exception!("IDENTIFIER") if !expect_peek!(TokenType::Identifier)
       name = Identifier.new(current, current.raw)
-      expected_exception!("=") if !expect_peek!(TokenType::Assignment)
       consume
+      expected_exception!("= | += | -= | *= | **= | \\=") unless VALID_INFIX_ASSIGNMENTS.includes?(current.type)
+      assignment_token = current
+      consume # Infix assignment
       value = parse_expression(Precedences::LOWEST)
+
+      if assignment_token.type != TokenType::Assignment && (value.is_a?(Funk::Lambda) || value.is_a?(Funk::Null))
+        raise Funk::Errors::SyntaxError.new("Unexpected #{assignment_token} at #{assignment_token.position} when right hand side is type #{value.token.type}")
+      end
 
       DefStatement.new(def_token, name, value)
     end
