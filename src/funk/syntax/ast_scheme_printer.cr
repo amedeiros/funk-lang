@@ -67,7 +67,7 @@ module Funk
     end
 
     def visit_def_statement(exp : Funk::DefStatement) : String
-      parenthesize("define " + exp.name.accept(self), exp.value)
+      parenthesize("set! " + exp.name.accept(self), exp.value)
     end
 
     def visit_lambda(exp : Funk::Lambda) : String
@@ -88,6 +88,10 @@ module Funk
 
     def visit_call_expression(exp : Funk::CallExpression) : String
       parenthesize(exp.name.accept(self), exp.arguments)
+    end
+
+    def visit_while_statement(exp : Funk::WhileStatement) : String
+      parenthesize("do-while #{exp.cond.accept(self)}", exp.body)
     end
 
     private def parenthesize(name : String, *exprs) : String

@@ -45,6 +45,7 @@ module Funk
   node InfixExpression, left : Ast, operator : TokenType, right : Ast
   node IfExpression, cond : Ast, consequence : Block, alternative : Ast
 
+  node WhileStatement, cond : Ast, body : Ast
   node ReturnStatement, expression : Ast
   node DefStatement, name : Identifier, value : Ast
   node Lambda, parameters : Array(Ast), body : Block

@@ -79,6 +79,26 @@ describe Funk::Parser do
       right_exp.right.as(Funk::Identifier).value.should eq "z"
     end
 
+    it "should parse a while statement" do
+      code = "while (x > 1) {\n x + 1\n}"
+      parser = new_parser(code).parse!
+      exp    = parser.program.tree.first.as(Funk::ExpressionStatement)
+      while_stmt = exp.expression.as(Funk::WhileStatement)
+      while_cond = while_stmt.cond.as(Funk::InfixExpression)
+
+      while_cond.operator.should eq Funk::TokenType::GreaterThan
+      while_cond.left.as(Funk::Identifier).value.should eq "x"
+      while_cond.right.as(Funk::Numeric).value.should eq 1.0
+
+      while_consequence = while_stmt.body.as(Funk::Block)
+      while_stmt_body   = while_consequence.statements.first.as(Funk::ExpressionStatement)
+      while_infix_body  = while_stmt_body.expression.as(Funk::InfixExpression)
+
+      while_infix_body.operator.should eq Funk::TokenType::Plus
+      while_infix_body.left.as(Funk::Identifier).value.should eq "x"
+      while_infix_body.right.as(Funk::Numeric).value.should eq 1.0
+    end
+
     it "should parse an if statement" do
       code   = "if (x > 1) {\n x + 1 \n}"
       parser = new_parser(code).parse!

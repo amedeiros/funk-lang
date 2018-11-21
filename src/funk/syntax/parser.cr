@@ -355,12 +355,32 @@ module Funk
       register_prefix TokenType::Lambda do
         current_lambda_token = current
 
-        expected_exception!("(") if !expect_peek!(TokenType::LeftParen)
+        expected_exception!("(") unless expect_peek!(TokenType::LeftParen)
         parameters = parse_lambda_parameters
-        expected_exception!("{") if !expect_peek!(TokenType::LeftCurly)
+        expected_exception!("{") unless expect_peek!(TokenType::LeftCurly)
 
         body = parse_block_statement
         Lambda.new(current_lambda_token, parameters, body)
+      end
+
+      register_prefix TokenType::While do
+        current_while_token = current
+        expected_exception!("(") unless expect_peek!(TokenType::LeftParen)
+        consume # Actually consume the (
+
+        if (current_token_is?(Funk::TokenType::RightParen))
+          cond = Funk::Boolean.new(current, true)
+          consume # )
+        else
+          cond = parse_expression(Precedences::LOWEST)
+          expected_exception!(")") unless expect_peek!(TokenType::RightParen)
+        end
+
+        expected_exception!("{") unless expect_peek!(TokenType::LeftCurly)
+
+        body = parse_block_statement
+
+        Funk::WhileStatement.new(current_while_token, cond, body)
       end
     end
     
