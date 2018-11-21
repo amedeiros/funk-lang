@@ -47,7 +47,7 @@ module Funk
 
   node WhileStatement, cond : Ast, body : Ast
   node ReturnStatement, expression : Ast
-  node DefStatement, name : Identifier, value : Ast
+  node DefStatement, name : Identifier, value : Ast, assignment_token : Token
   node Lambda, parameters : Array(Ast), body : Block
   node Block, statements : Array(Ast)
   node ExpressionStatement, expression : Ast

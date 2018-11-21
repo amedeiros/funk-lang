@@ -67,6 +67,14 @@ module Funk
     end
 
     def visit_def_statement(exp : Funk::DefStatement) : String
+      if exp.assignment_token.type != Funk::TokenType::Assignment
+        name       =  exp.name.accept(self)
+        assignment = exp.assignment_token.raw
+        # expt == exponent ** in funk
+        op = assignment[1] == "=" ? assignment[0] : "expt"
+        return "(set! #{name} (#{op} #{name} #{exp.value.accept(self)}))"
+      end
+
       parenthesize("set! " + exp.name.accept(self), exp.value)
     end
 

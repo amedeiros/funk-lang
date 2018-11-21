@@ -89,7 +89,7 @@ module Funk
         raise Funk::Errors::SyntaxError.new("Unexpected #{assignment_token} at #{assignment_token.position} when right hand side is type #{value.token.type}")
       end
 
-      DefStatement.new(def_token, name, value)
+      DefStatement.new(def_token, name, value, assignment_token)
     end
 
     private def parse_return : Ast
