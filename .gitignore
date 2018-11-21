@@ -13,4 +13,6 @@ example.funk
 .vscode/
 cli
 cli.dwarf
+repl
+repl.dwarf
 
