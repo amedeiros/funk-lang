@@ -250,6 +250,9 @@ module Funk
     end
 
     private def load_prefix_blocks
+      # Null
+      register_prefix(TokenType::Null) { Null.new(current) }
+
       # Identifier
       register_prefix(TokenType::Identifier) { Identifier.new(current, current.raw) }
 

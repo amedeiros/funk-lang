@@ -262,6 +262,15 @@ def result  = display(add_one(add_one(1)))
       exp.expression.as(Funk::StringNode).value.should eq val
     end
 
+    it "should parse a null literal" do
+      val    = "null"
+      parser = new_parser(val).parse!
+
+      exp = parser.program.tree.first.as(Funk::ExpressionStatement)
+      exp.token.type.should eq Funk::TokenType::Null
+      exp.expression.is_a?(Funk::Null).should be_true
+    end
+
     # syntax errors
 
     it "should raise an error for a number followed by a unexpected token" do

@@ -19,6 +19,7 @@ module Funk
     Break
     Continue
     Lambda
+    Null
 
     # Operators
     Plus

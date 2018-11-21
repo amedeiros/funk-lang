@@ -32,6 +32,7 @@ module Funk
 
   # Program
   node Program, tree : Array(Ast)
+  node Null
 
   # Litterals
   node Numeric,    value : Float64
@@ -42,21 +43,11 @@ module Funk
   node CallExpression, name : Identifier, arguments : Array(Ast)
   node PrefixExpression, operator : String, right : Ast
   node InfixExpression, left : Ast, operator : TokenType, right : Ast
-
-  node IfExpression,
-    cond : Ast,
-    consequence : Block,
-    alternative : Ast
+  node IfExpression, cond : Ast, consequence : Block, alternative : Ast
 
   node ReturnStatement, expression : Ast
   node DefStatement, name : Identifier, value : Ast
   node Lambda, parameters : Array(Ast), body : Block
   node Block, statements : Array(Ast)
   node ExpressionStatement, expression : Ast
-
-  node Null
-  # node LeftCurly
-  # node RightCurly
-  # node LeftParen
-  # node RightParen
 end

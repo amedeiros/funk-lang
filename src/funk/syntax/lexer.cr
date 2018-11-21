@@ -18,6 +18,7 @@ module Funk
       "return"    => TokenType::Return,
       "break"     => TokenType::Break,
       "continue"  => TokenType::Continue,
+      "null"      => TokenType::Null,
   } of String => TokenType
 
     property reader        : Reader
