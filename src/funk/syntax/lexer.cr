@@ -178,7 +178,7 @@ module Funk
           when 'r'
             str += "\r"
           else
-            raise UnknownEscapeSequence.new("Unknown escape sequence ")
+            raise Errors::UnknownEscapeSequence.new("Unknown escape sequence ")
           end
         else
           str += current_char
