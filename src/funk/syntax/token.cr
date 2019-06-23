@@ -2,7 +2,7 @@ require "./token_type.cr"
 require "./position"
 
 module Funk
-  class Token
+  struct Token
     getter type     : TokenType
     getter raw      : String
     getter position : Position

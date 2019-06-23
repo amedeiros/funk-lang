@@ -13,12 +13,16 @@ parser = OptionParser.parse! do |parser|
 end
 
 unless compile.empty?
-  printer  = Funk::AstSchemePrinter.new
+  compiler = Funk::Compiler.new
   code     = File.open(compile)
   lex      = Funk::Lexer.new(code, compile)
   parser   = Funk::Parser.new(lex)
 
-  puts printer.visit_program(parser.parse!.program)
+  bytecode = compiler.visit_program(parser.parse!.program)
+  func_table = [Funk::FunctionMeta.new("main", 0, 0, 0)]
+  vm = Funk::VM.new(bytecode, Array(Int32).new, func_table)
+  vm.trace = true
+  vm.exec(func_table[0].address)
 else
   puts parser unless displayed_help
 end
