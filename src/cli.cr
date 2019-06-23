@@ -5,10 +5,12 @@ require "file"
 
 compile = ""
 displayed_help = false
+verbose = false
 
 parser = OptionParser.parse! do |parser|
   parser.banner = "Usage: cli [options] [file]"
   parser.on("-c NAME", "--compile=NAME", "Compile to scheme!") { |name| compile = name }
+  parser.on("-v", "--verbose", "Show VM internals") { verbose = true }
   parser.on("-h", "--help", "Show this help") { displayed_help = true; puts parser }
 end
 
@@ -19,10 +21,9 @@ unless compile.empty?
   parser   = Funk::Parser.new(lex)
 
   bytecode = compiler.visit_program(parser.parse!.program)
-  func_table = [Funk::FunctionMeta.new("main", 0, 0, 0)]
-  vm = Funk::VM.new(bytecode, Array(Int32).new, func_table)
-  vm.trace = true
-  vm.exec(func_table[0].address)
+  vm = Funk::VM.new(bytecode, Array(Int32).new, compiler.func_meta)
+  vm.trace = verbose
+  vm.exec(compiler.func_meta[0].address)
 else
   puts parser unless displayed_help
 end

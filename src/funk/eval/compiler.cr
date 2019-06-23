@@ -2,9 +2,17 @@ module Funk
   class Compiler < Visitor(Array(Int32))
     property string_table   = Array(String).new
     property function_table = { "display" => 1 }
+    BUILTINS  = [
+      # Display
+      Funk::Bytecode::PRINT, Funk::Bytecode::RET
+    ]
+
+    property func_meta = [Funk::FunctionMeta.new("display", 0, 0, 0)]
 
     def visit_program(exp : Funk::Program) : Array(Int32)
-      prog = Array(Int32).new
+      # Insert main call at 0 of func_meta with an address of the size of builtins so after all builtins
+      func_meta.insert(0, Funk::FunctionMeta.new("main", 0, 0, BUILTINS.size.to_i32))
+      prog = BUILTINS
       exp.tree.each do |x| 
         prog += x.accept(self)
       end
@@ -47,10 +55,10 @@ module Funk
       case exp.operator
       when TokenType::Plus
         code << Bytecode::IADD
+      when TokenType::Multiply
+        code << Bytecode::IMUL
       end
 
-      code << Bytecode::PRINT
-      
       code
     end
 
@@ -85,8 +93,6 @@ module Funk
         func << Bytecode::CALL
         func << function_table[exp.name.value]
 
-        # exp.arguments.each { |x| func += x.accept(self) }
-        # puts func
         func
       else
         raise Funk::Errors::RuntimeError.new("Unknown function #{exp.name}")
