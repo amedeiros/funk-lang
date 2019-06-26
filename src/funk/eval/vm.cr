@@ -81,7 +81,7 @@ module Funk
 					stack[prefix_increment_sp] = globals[addr]
         when Bytecode::STORE
           regnum = code[postfix_increment_ip]
-					ctx.locals[regnum] = stack[postfix_decrement_sp]
+          ctx.locals.insert(regnum, stack[postfix_decrement_sp])
         when Bytecode::GSTORE
           addr = code[postfix_increment_ip]
 					globals[addr] = stack[postfix_decrement_sp]

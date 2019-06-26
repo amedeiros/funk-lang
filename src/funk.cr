@@ -55,3 +55,29 @@ end
 # vm = Funk::VM.new(factorial, Array(Int32).new, factorial_metadata)
 # vm.trace = true
 # vm.exec(factorial_metadata[0].address)
+
+f = [
+	#								ADDRESS
+	#.def main() { print f(10); }
+		Funk::Bytecode::ICONST, 10,					# 0
+		Funk::Bytecode::CALL, 1,					# 2
+		Funk::Bytecode::PRINT,						# 4
+		Funk::Bytecode::HALT,						# 5
+	#.def f(x): ARGS=1, LOCALS=1
+	#  a = x;
+    Funk::Bytecode::LOAD, 0,					# 6	<-- start of f
+    Funk::Bytecode::STORE, 1,
+	# return 2*a
+    Funk::Bytecode::LOAD, 1,
+    Funk::Bytecode::ICONST, 2,
+    Funk::Bytecode::IMUL,
+    Funk::Bytecode::RET
+]
+
+f_metadata = [
+  Funk::FunctionMeta.new("main", 0, 0, 0),
+  Funk::FunctionMeta.new("f", 1, 1, 6)
+]
+vm = Funk::VM.new(f, Array(Int32).new, f_metadata)
+vm.trace = true
+vm.exec(f_metadata[0].address)

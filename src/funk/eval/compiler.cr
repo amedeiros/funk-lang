@@ -11,7 +11,7 @@ module Funk
 
     def visit_program(exp : Funk::Program) : Array(Int32)
       # Insert main call at 0 of func_meta with an address of the size of builtins so after all builtins
-      func_meta.insert(0, Funk::FunctionMeta.new("main", 0, 0, BUILTINS.size.to_i32))
+      func_meta.insert(0, Funk::FunctionMeta.new("main", 0, 0, BUILTINS.size))
       prog = BUILTINS
       exp.tree.each do |x| 
         prog += x.accept(self)
@@ -36,6 +36,7 @@ module Funk
     end
 
     def visit_identifier(exp : Funk::Identifier) :  Array(Int32)
+      puts exp
       [] of Int32
     end
 
@@ -67,19 +68,35 @@ module Funk
     end
 
     def visit_return_statement(exp : Funk::ReturnStatement) : Array(Int32)
-      [] of Int32
+      exp.expression.accept(self)
     end
 
     def visit_def_statement(exp : Funk::DefStatement) : Array(Int32)
-      [] of Int32
+      code = [] of Int32
+      case exp.value
+      when Funk::Lambda
+        lambda = exp.value.as(Funk::Lambda)
+        @func_meta << Funk::FunctionMeta.new(exp.name.value, lambda.parameters.size - 1, 0, code.size)
+        @function_table[exp.name.value] = code.size
+
+        # lambda.parameters.each_with_index { |v, i| code += [Bytecode::LOAD, i] }
+
+        code += lambda.body.accept(self)
+        code << Bytecode::RET
+      else
+        raise Funk::Errors::RuntimeError.new("Not implemeted!")
+      end
+
+      code
     end
 
     def visit_lambda(exp : Funk::Lambda) : Array(Int32)
+      raise "LAMBDA IMPLEMENT"
       [] of Int32
     end
 
     def visit_block(exp : Funk::Block) : Array(Int32)
-      [] of Int32
+      exp.statements.map { |x| x.accept(self) }.flatten
     end
 
     def visit_expression_statement(exp : Funk::ExpressionStatement) : Array(Int32)
