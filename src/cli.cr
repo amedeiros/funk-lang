@@ -21,9 +21,16 @@ unless compile.empty?
   parser   = Funk::Parser.new(lex)
 
   bytecode = compiler.visit_program(parser.parse!.program)
-  vm = Funk::VM.new(bytecode, Array(Int32).new, compiler.func_meta)
-  vm.trace = verbose
-  vm.exec(compiler.func_meta[0].address)
+  vm       = Funk::VM.new(verbose)
+  vm.code         = compiler.visit_program(parser.parse!.program)
+  vm.metadata     = compiler.func_meta
+  vm.string_table = compiler.string_table
+  vm.exec(0)
+  val = vm.last_popped_stack
+
+  if val != nil
+    puts val 
+  end
 else
   puts parser unless displayed_help
 end
