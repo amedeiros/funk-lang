@@ -33,6 +33,7 @@ module Funk
       Instruction.new("iadd"), # index is the opcode
       Instruction.new("isub"),
       Instruction.new("imul"),
+      Instruction.new("idiv"),
       Instruction.new("ilt"),
       Instruction.new("igt"),
       Instruction.new("ieq"),

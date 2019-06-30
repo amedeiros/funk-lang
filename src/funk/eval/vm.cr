@@ -71,6 +71,10 @@ module Funk
           b = stack.pop
           a = stack.pop
           stack.insert(prefix_decrement_sp, a * b)
+        when Bytecode::IDIV
+          b = stack.pop
+          a = stack.pop
+          stack.insert(prefix_decrement_sp, a / b)
         when Bytecode::ILT
           b = stack.pop
           a = stack.pop

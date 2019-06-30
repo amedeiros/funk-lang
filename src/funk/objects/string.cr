@@ -9,6 +9,11 @@ module Funk
       def to_s(io)
         io << value
       end
+
+      def ==(other : Funk::Objects::String) : Funk::Objects::Boolean
+        return Funk::VM::TRUE if value == other.value
+        Funk::VM::FALSE     
+      end
     end
   end
 end
