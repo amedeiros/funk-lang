@@ -11,7 +11,5 @@ license: MIT
 targets:
   funk:
     main: src/funk.cr
-  repl:
-    main: src/repl.cr
   cli:
     main: src/cli.cr
