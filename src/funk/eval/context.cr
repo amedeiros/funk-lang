@@ -4,10 +4,9 @@ module Funk
     property metadata         : Funk::Objects::Closure
     property return_ip        : Int32
     property return_code      : Array(Int32)
-    property locals           : Array(Funk::Objects::Object)
+    property locals = Array(Funk::Objects::Object).new
 
     def initialize(@invoking_context, @return_ip, @metadata, @return_code = Array(Int32).new)
-      @locals = Array(Funk::Objects::Object).new(metadata.compiled_function.nargs + metadata.compiled_function.nlocals)
     end
   end
 end

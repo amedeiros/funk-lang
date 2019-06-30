@@ -124,12 +124,10 @@ module Funk
           prefix_decrement_sp
         when Bytecode::CALL
           # expects all args on stack
-          findex = code[postfix_increment_ip]			# index of target function
-          func   = metadata[findex]
-          nargs  = func.compiled_function.nargs	# how many args got pushed
-          @ctx   = Funk::Context.new(ctx, ip, func, @code)
-          
-					# copy args into new context
+          findex   = code[postfix_increment_ip]			# index of target function
+          func     = metadata[findex]
+          nargs    = func.compiled_function.nargs	# how many args got pushed
+          @ctx     = Funk::Context.new(ctx, ip, func, @code)
           firstarg = sp - nargs + 1
           
           i = 0
@@ -138,13 +136,13 @@ module Funk
             i += 1
           end
           
-					@sp  -= nargs
+          @sp   = -1
           @ip   = 0
           @code = func.compiled_function.code
         when Bytecode::RET
           @ip   = ctx.return_ip
           @code = ctx.return_code
-          @ctx  = ctx.invoking_context			# pop
+          @ctx  = ctx.invoking_context
 
           if @code.size == 0
             @ip = 0
@@ -173,7 +171,7 @@ module Funk
         io << "stack=["
         i = 0
 
-        while (i <= sp)
+        while (i <= sp && stack.size > 0 && i < stack.size)
           io << " "
           io << stack[i]
           i += 1

@@ -34,14 +34,13 @@ if !compile.empty?
     puts val 
   end
 elsif repl
-  run_repl
+  run_repl(verbose)
 else
   puts parser unless displayed_help
 end
 
-def run_repl
+def run_repl(verbose)
   response = ""
-  verbose  = ENV.has_key?("VERBOSE")
   vm       = Funk::VM.new(verbose)
   compiler = Funk::Compiler.new
   count    = 0

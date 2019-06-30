@@ -83,17 +83,16 @@ module Funk
 
     def visit_def_statement(exp : Funk::DefStatement) : Array(Int32)
       code = [] of Int32
+
       case exp.value
       when Funk::Lambda
+        function_table[exp.name.value] = func_meta.size
+
         lambda = exp.value.as(Funk::Lambda)
-        lambda.accept(self)
-        # @func_meta << Funk::FunctionMeta.new(exp.name.value, lambda.parameters.size - 1, 0, code.size)
-        # @function_table[exp.name.value] = code.size
+        body   = lambda.body.accept(self)
+        body << Bytecode::RET if body != Bytecode::RET
 
-        # # lambda.parameters.each_with_index { |v, i| code += [Bytecode::LOAD, i] }
-
-        # code += lambda.body.accept(self)
-        # code << Bytecode::RET
+        @func_meta << Funk::Objects::Closure.new(Funk::Objects::CompiledFunction.new(body, 0, lambda.parameters.size - 1), exp.name.value)
       else
         raise Funk::Errors::RuntimeError.new("Not implemeted!")
       end
@@ -102,7 +101,6 @@ module Funk
     end
 
     def visit_lambda(exp : Funk::Lambda) : Array(Int32)
-      raise "LAMBDA IMPLEMENT"
       [] of Int32
     end
 
