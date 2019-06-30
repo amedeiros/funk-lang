@@ -40,7 +40,7 @@ module Funk
     end
 
     def last_popped_stack : Funk::Objects::Object | Nil
-      return nil if sp >= stack.size
+      return nil if sp >= stack.size || stack.size == 0
 
       stack[sp]
     end
@@ -60,37 +60,37 @@ module Funk
         when Bytecode::NULL
           stack.insert(prefix_increment_sp, NULL)
         when Bytecode::IADD
-          b = stack[postfix_decrement_sp]
-          a = stack[postfix_decrement_sp]
-          stack[prefix_increment_sp] = a + b
+          b = stack.pop
+          a = stack.pop
+          stack.insert(prefix_decrement_sp, a + b)
         when Bytecode::ISUB
-          b = stack[postfix_decrement_sp]
-          a = stack[postfix_decrement_sp]
-          stack[prefix_increment_sp] = a - b
+          b = stack.pop
+          a = stack.pop
+          stack.insert(prefix_decrement_sp, a - b)
         when Bytecode::IMUL
-          b = stack[postfix_decrement_sp]
-          a = stack[postfix_decrement_sp]
-          stack[prefix_increment_sp] = a * b
+          b = stack.pop
+          a = stack.pop
+          stack.insert(prefix_decrement_sp, a * b)
         when Bytecode::ILT
-          b = stack[postfix_decrement_sp]
-          a = stack[postfix_decrement_sp]
-          stack[prefix_increment_sp] = a < b
+          b = stack.pop
+          a = stack.pop
+          stack.insert(prefix_decrement_sp, a < b)
         when Bytecode::IGT
-          b = stack[postfix_decrement_sp]
-          a = stack[postfix_decrement_sp]
-          stack[prefix_increment_sp] = a > b
+          b = stack.pop
+          a = stack.pop
+          stack.insert(prefix_decrement_sp, a > b)
         when Bytecode::IEQ
-          b = stack[postfix_decrement_sp]
-          a = stack[postfix_decrement_sp]
-          stack[prefix_increment_sp] = a == b
+          b = stack.pop
+          a = stack.pop
+          stack.insert(prefix_decrement_sp, a == b)
         when Bytecode::IGTEQ
-          b = stack[postfix_decrement_sp]
-          a = stack[postfix_decrement_sp]
-          stack[prefix_increment_sp] = a >= b
+          b = stack.pop
+          a = stack.pop
+          stack.insert(prefix_decrement_sp, a >= b)
         when Bytecode::ILTEQ
-          b = stack[postfix_decrement_sp]
-          a = stack[postfix_decrement_sp]
-          stack[prefix_increment_sp] = a <= b
+          b = stack.pop
+          a = stack.pop
+          stack.insert(prefix_decrement_sp, a <= b)
         when Bytecode::STRING
           stack.insert(prefix_increment_sp, string_table[code[postfix_increment_ip]])
         when Bytecode::BR
@@ -118,6 +118,7 @@ module Funk
           addr = code[postfix_increment_ip]
 					globals[addr] = stack[postfix_decrement_sp]
         when Bytecode::PRINT
+          postfix_decrement_sp
           puts stack.shift
         when Bytecode::POP
           prefix_decrement_sp
@@ -126,7 +127,8 @@ module Funk
           findex = code[postfix_increment_ip]			# index of target function
           func   = metadata[findex]
           nargs  = func.compiled_function.nargs	# how many args got pushed
-					@ctx   = Funk::Context.new(ctx, ip, func, code)
+          @ctx   = Funk::Context.new(ctx, ip, func, @code)
+          
 					# copy args into new context
           firstarg = sp - nargs + 1
           
@@ -136,13 +138,13 @@ module Funk
             i += 1
           end
           
-					@sp -= nargs
-          @ip = 0 #metadata[findex].address		# jump to function
+					@sp  -= nargs
+          @ip   = 0
           @code = func.compiled_function.code
         when Bytecode::RET
           @ip   = ctx.return_ip
-          @ctx  = ctx.invoking_context			# pop
           @code = ctx.return_code
+          @ctx  = ctx.invoking_context			# pop
 
           if @code.size == 0
             @ip = 0
