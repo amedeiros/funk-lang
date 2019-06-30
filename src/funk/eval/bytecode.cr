@@ -7,22 +7,25 @@ module Funk
     ISUB   = 2
     IMUL   = 3
     ILT    = 4
-    IEQ    = 5
-    BR     = 6
-    BRT    = 7
-    BRF    = 8
-    ICONST = 9
-    LOAD   = 10
-    GLOAD  = 11
-    STORE  = 12
-    GSTORE = 13
-    PRINT  = 14
-    POP    = 15
-    CALL   = 16
-    RET    = 17
-    STRING = 18
-    BOOL   = 19
-    HALT   = 20
+    IGT    = 5
+    IEQ    = 6
+    IGTEQ  = 7
+    ILTEQ  = 8
+    BR     = 9
+    BRT    = 10
+    BRF    = 11
+    ICONST = 12
+    LOAD   = 13
+    GLOAD  = 14
+    STORE  = 15
+    GSTORE = 16
+    PRINT  = 17
+    POP    = 18
+    CALL   = 19
+    RET    = 20
+    STRING = 21
+    BOOL   = 22
+    HALT   = 23
 
     INSTRUCTIONS = [
       Instruction.new("nil"), # null
@@ -30,7 +33,10 @@ module Funk
       Instruction.new("isub"),
       Instruction.new("imul"),
       Instruction.new("ilt"),
+      Instruction.new("igt"),
       Instruction.new("ieq"),
+      Instruction.new("igteq"),
+      Instruction.new("ilteq"),
       Instruction.new("br", 1),
       Instruction.new("brt", 1),
       Instruction.new("brf", 1),

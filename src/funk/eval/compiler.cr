@@ -1,25 +1,21 @@
 module Funk
   class Compiler < Visitor(Array(Int32))
-    property string_table   = Array(String).new
-    property function_table = { "display" => 1 }
-    BUILTINS  = [
-      # Display
-      Funk::Bytecode::PRINT, Funk::Bytecode::RET
-    ]
-
-    property func_meta = [Funk::FunctionMeta.new("display", 0, 0, 0)]
+    property string_table   = Array(Funk::Objects::String).new
+    property function_table = { "display" => 0 }
+    property func_meta      = [Funk::Objects::Closure.new(Funk::Objects::CompiledFunction.new([Funk::Bytecode::PRINT, Funk::Bytecode::RET]), "PRINT")]
+    property code           = Array(Int32).new
+    property constants      = Array(Funk::Objects::Object).new
 
     def visit_program(exp : Funk::Program) : Array(Int32)
-      # Insert main call at 0 of func_meta with an address of the size of builtins so after all builtins
-      func_meta.insert(0, Funk::FunctionMeta.new("main", 0, 0, BUILTINS.size))
-      prog = BUILTINS
-      exp.tree.each do |x| 
-        prog += x.accept(self)
+      @code = Array(Int32).new
+
+      exp.tree.each do |x|
+        @code += x.accept(self)
       end
 
-      prog << Bytecode::HALT
+      code << Bytecode::HALT
 
-      prog
+      code
     end
 
     def visit_numeric(exp : Funk::Numeric) : Array(Int32)
@@ -31,17 +27,17 @@ module Funk
     end
 
     def visit_string_node(exp : Funk::StringNode) : Array(Int32)
-      string_table << exp.value
-      [Bytecode::STRING, string_table.size]
+      code = [Bytecode::STRING, string_table.size]
+      string_table << Funk::Objects::String.new(exp.value)
+      code
     end
 
     def visit_identifier(exp : Funk::Identifier) :  Array(Int32)
-      puts exp
       [] of Int32
     end
 
     def visit_boolean(exp : Funk::Boolean) :  Array(Int32)
-      [Bytecode::BOOL, exp.value ? VM::TRUE : VM::FALSE]
+      [Bytecode::BOOL, exp.value ? 1 : 0]
     end
 
     def visit_prefix_expression(exp : Funk::PrefixExpression) : Array(Int32)
@@ -58,6 +54,20 @@ module Funk
         code << Bytecode::IADD
       when TokenType::Multiply
         code << Bytecode::IMUL
+      when TokenType::Minus
+        code << Bytecode::ISUB
+      when TokenType::LessThan
+        code << Bytecode::ILT
+      when TokenType::GreaterThan
+        code << Bytecode::IGT
+      when TokenType::Equal
+        code << Bytecode::IEQ
+      when TokenType::GreaterEqual
+        code << Bytecode::IGTEQ
+      when TokenType::LessEqual
+        code << Bytecode::ILTEQ
+      else
+        raise Funk::Errors::RuntimeError.new("Unkown operator #{exp.operator}")
       end
 
       code
@@ -76,13 +86,14 @@ module Funk
       case exp.value
       when Funk::Lambda
         lambda = exp.value.as(Funk::Lambda)
-        @func_meta << Funk::FunctionMeta.new(exp.name.value, lambda.parameters.size - 1, 0, code.size)
-        @function_table[exp.name.value] = code.size
+        lambda.accept(self)
+        # @func_meta << Funk::FunctionMeta.new(exp.name.value, lambda.parameters.size - 1, 0, code.size)
+        # @function_table[exp.name.value] = code.size
 
-        # lambda.parameters.each_with_index { |v, i| code += [Bytecode::LOAD, i] }
+        # # lambda.parameters.each_with_index { |v, i| code += [Bytecode::LOAD, i] }
 
-        code += lambda.body.accept(self)
-        code << Bytecode::RET
+        # code += lambda.body.accept(self)
+        # code << Bytecode::RET
       else
         raise Funk::Errors::RuntimeError.new("Not implemeted!")
       end

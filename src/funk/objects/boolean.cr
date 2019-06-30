@@ -7,6 +7,10 @@ module Funk
 
       def initialize(@value)
       end
+
+      def to_s(io)
+        io << (value ? "#t" : "#f")
+      end
     end
   end
 end

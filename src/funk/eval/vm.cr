@@ -1,41 +1,55 @@
 require "./bytecode"
 require "./context"
 require "../syntax/errors"
+require "../objects/*"
 
 module Funk
   class VM
     DEFAULT_STACK_SIZE      = 1_000
     DEFAULT_CALL_STACK_SIZE = 1_000
-    FALSE = 0
-    TRUE  = 1
+    FALSE = Funk::Objects::Boolean.new(false)
+    TRUE  = Funk::Objects::Boolean.new(true)
+    NULL  = Funk::Objects::Null.new
 
     # Registers
     property ip = 0  # Instruction Pointer
     property sp = -1 # Stack Pointer
 
-    # Memory
     property code    = Array(Int32).new
-    property globals = Array(Int32).new
-    property stack   = Array(Int32).new(DEFAULT_STACK_SIZE)
-    property! ctx : Context
+    property globals = Array(Funk::Objects::Object).new
+    property string_table = Array(Funk::Objects::String).new
+    property! stack : Array(Funk::Objects::Object)
+    property! ctx   : Context
 
-    property metadata : Array(FunctionMeta)
+    property metadata = [] of Funk::Objects::Closure
     property trace : Bool
 
-    def initialize(@code, @globals, @metadata, @trace = false)
+    def initialize(code, @globals, metadata, @trace = false)
+    end
+
+    def initialize(@trace)
     end
 
     def exec(start_ip : Int32)
-      @ip  = start_ip
-      @ctx = Context.new(nil, 0, metadata[0]) # simulate a call to main()
+      @metadata << Funk::Objects::Closure.new(Funk::Objects::CompiledFunction.new(code), "main")
+      @stack = Array(Funk::Objects::Object).new(DEFAULT_STACK_SIZE)
+      @sp    = -1
+      @ip    = start_ip
+      @ctx   = Context.new(@ctx, 0, metadata.last)
       cpu
+    end
+
+    def last_popped_stack : Funk::Objects::Object | Nil
+      return nil if sp >= stack.size
+
+      stack[sp]
     end
 
     protected def cpu
       opcode = code[ip]
-      a = 0
-      b = 0
-      addr = 0
+      a      = 0
+      b      = 0
+      addr   = 0
       regnum = 0
 
       while (opcode != Bytecode::HALT && ip < code.size)
@@ -43,26 +57,42 @@ module Funk
         @ip += 1
 
         case opcode
+        when Bytecode::NULL
+          stack.insert(prefix_increment_sp, NULL)
         when Bytecode::IADD
           b = stack[postfix_decrement_sp]
           a = stack[postfix_decrement_sp]
-          @stack[prefix_increment_sp] = a + b
+          stack[prefix_increment_sp] = a + b
         when Bytecode::ISUB
           b = stack[postfix_decrement_sp]
           a = stack[postfix_decrement_sp]
-          @stack[prefix_increment_sp] = a - b
+          stack[prefix_increment_sp] = a - b
         when Bytecode::IMUL
           b = stack[postfix_decrement_sp]
           a = stack[postfix_decrement_sp]
-          @stack[prefix_increment_sp] = a * b
+          stack[prefix_increment_sp] = a * b
         when Bytecode::ILT
           b = stack[postfix_decrement_sp]
           a = stack[postfix_decrement_sp]
-          @stack[prefix_increment_sp] = (a < b) ? TRUE : FALSE
+          stack[prefix_increment_sp] = a < b
+        when Bytecode::IGT
+          b = stack[postfix_decrement_sp]
+          a = stack[postfix_decrement_sp]
+          stack[prefix_increment_sp] = a > b
         when Bytecode::IEQ
           b = stack[postfix_decrement_sp]
           a = stack[postfix_decrement_sp]
-          @stack[prefix_increment_sp] = (a == b) ? TRUE : FALSE
+          stack[prefix_increment_sp] = a == b
+        when Bytecode::IGTEQ
+          b = stack[postfix_decrement_sp]
+          a = stack[postfix_decrement_sp]
+          stack[prefix_increment_sp] = a >= b
+        when Bytecode::ILTEQ
+          b = stack[postfix_decrement_sp]
+          a = stack[postfix_decrement_sp]
+          stack[prefix_increment_sp] = a <= b
+        when Bytecode::STRING
+          stack.insert(prefix_increment_sp, string_table[code[postfix_increment_ip]])
         when Bytecode::BR
           @ip = code[postfix_increment_ip]
         when Bytecode::BRT
@@ -72,10 +102,12 @@ module Funk
           addr = code[postfix_increment_ip]
 					@ip = addr if stack[postfix_decrement_sp] == FALSE 
         when Bytecode::ICONST
-          stack.insert(prefix_increment_sp, code[postfix_increment_ip])
+          stack.insert(prefix_increment_sp, Funk::Objects::Int.new(code[postfix_increment_ip].to_i64))
+        when Bytecode::BOOL
+          stack.insert(prefix_increment_sp, code[postfix_increment_ip] == 0 ? FALSE : TRUE)
         when Bytecode::LOAD
           regnum = code[postfix_increment_ip]
-          @stack[prefix_increment_sp] = ctx.locals[regnum]
+          stack[prefix_increment_sp] = ctx.locals[regnum]
         when Bytecode::GLOAD
           addr = code[postfix_increment_ip]
 					stack[prefix_increment_sp] = globals[addr]
@@ -86,14 +118,15 @@ module Funk
           addr = code[postfix_increment_ip]
 					globals[addr] = stack[postfix_decrement_sp]
         when Bytecode::PRINT
-          puts stack[postfix_decrement_sp]
+          puts stack.shift
         when Bytecode::POP
           prefix_decrement_sp
         when Bytecode::CALL
           # expects all args on stack
-					findex = code[postfix_increment_ip]			# index of target function
-					nargs  = metadata[findex].nargs	# how many args got pushed
-					@ctx   = Funk::Context.new(ctx, ip, metadata[findex])
+          findex = code[postfix_increment_ip]			# index of target function
+          func   = metadata[findex]
+          nargs  = func.compiled_function.nargs	# how many args got pushed
+					@ctx   = Funk::Context.new(ctx, ip, func, code)
 					# copy args into new context
           firstarg = sp - nargs + 1
           
@@ -104,10 +137,17 @@ module Funk
           end
           
 					@sp -= nargs
-					@ip = metadata[findex].address		# jump to function
+          @ip = 0 #metadata[findex].address		# jump to function
+          @code = func.compiled_function.code
         when Bytecode::RET
-          @ip  = ctx.return_ip
-					@ctx = ctx.invoking_context			# pop
+          @ip   = ctx.return_ip
+          @ctx  = ctx.invoking_context			# pop
+          @code = ctx.return_code
+
+          if @code.size == 0
+            @ip = 0
+            @code << Funk::Bytecode::HALT
+          end
         when Bytecode::HALT
           exit
         else
