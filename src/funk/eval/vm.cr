@@ -136,7 +136,7 @@ module Funk
             i += 1
           end
           
-          @sp   = -1
+          @sp   = sp - nargs
           @ip   = 0
           @code = func.compiled_function.code
         when Bytecode::RET

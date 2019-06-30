@@ -6,7 +6,7 @@ module Funk
           if other.class != self.class
             raise Funk::Errors::RuntimeError.new("Expected #{self.class} on right hand found #{other.class} instead")
 
-          {% if meth == "+" || meth == "-" || meth == "*" || meth == "divide" %}
+          {% if meth == "+" || meth == "-" || meth == "*" || meth == "/" %}
           elsif self.class == Funk::Objects::Int
             Funk::Objects::Int.new(self.as(Funk::Objects::Int).value {{meth.id}} other.as(Funk::Objects::Int).value)
           {% end %}
@@ -30,7 +30,7 @@ module Funk
       infix "<="
       infix ">="
       infix "=="
-      # infix "divide"
+      infix "/"
     end
   end
 end

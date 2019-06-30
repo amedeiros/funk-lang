@@ -66,6 +66,8 @@ module Funk
         code << Bytecode::IGTEQ
       when TokenType::LessEqual
         code << Bytecode::ILTEQ
+      when TokenType::Divide
+        code << Bytecode::IDIV
       else
         raise Funk::Errors::RuntimeError.new("Unkown operator #{exp.operator}")
       end

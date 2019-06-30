@@ -1,1 +1,10 @@
 display(1 + 2 * 3)
+display(1 * 9 + 1)
+def x = -> () { 3 + 1}
+display("Apples")
+display(x())
+display("b" > "a")
+display(x() * 2)
+def add_one = -> (x) { x + 1 }
+
+display(add_one(299))
