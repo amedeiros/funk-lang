@@ -24,10 +24,7 @@ module Funk
     property metadata = [] of Funk::Objects::Closure
     property trace : Bool
 
-    def initialize(code, @globals, metadata, @trace = false)
-    end
-
-    def initialize(@trace)
+    def initialize(@trace=false)
     end
 
     def exec(start_ip : Int32)
