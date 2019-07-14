@@ -15,9 +15,8 @@ module Funk
     property ip = 0  # Instruction Pointer
     property sp = -1 # Stack Pointer
 
-    property code    = Array(Int32).new
-    property globals = Array(Funk::Objects::Object).new
-    property string_table = Array(Funk::Objects::String).new
+    property code      = Array(Int32).new
+    property constants = Array(Funk::Objects::Object).new
     property! stack : Array(Funk::Objects::Object)
     property! ctx   : Context
 
@@ -92,17 +91,7 @@ module Funk
           b = stack.pop
           a = stack.pop
           stack.insert(prefix_decrement_sp, a <= b)
-        when Bytecode::STRING
-          stack.insert(prefix_increment_sp, string_table[code[postfix_increment_ip]])
-        when Bytecode::BR
-          @ip = code[postfix_increment_ip]
-        when Bytecode::BRT
-          addr = code[postfix_increment_ip]
-          @ip = addr if stack[postfix_decrement_sp] == TRUE
-        when Bytecode::BRF
-          addr = code[postfix_increment_ip]
-					@ip = addr if stack[postfix_decrement_sp] == FALSE 
-        when Bytecode::ICONST
+        when Bytecode::OPCONSTANT
           stack.insert(prefix_increment_sp, Funk::Objects::Int.new(code[postfix_increment_ip].to_i64))
         when Bytecode::BOOL
           stack.insert(prefix_increment_sp, code[postfix_increment_ip] == 0 ? FALSE : TRUE)
@@ -111,13 +100,13 @@ module Funk
           stack[prefix_increment_sp] = ctx.locals[regnum]
         when Bytecode::GLOAD
           addr = code[postfix_increment_ip]
-					stack[prefix_increment_sp] = globals[addr]
+					stack[prefix_increment_sp] = constants[addr]
         when Bytecode::STORE
           regnum = code[postfix_increment_ip]
           ctx.locals.insert(regnum, stack[postfix_decrement_sp])
         when Bytecode::GSTORE
           addr = code[postfix_increment_ip]
-					globals[addr] = stack[postfix_decrement_sp]
+					constants[addr] = stack[postfix_decrement_sp]
         when Bytecode::PRINT
           postfix_decrement_sp
           puts stack.shift
@@ -198,7 +187,7 @@ module Funk
       puts "Data memory:"
       addr = 0
       
-      globals.each do |o|
+      constants.each do |o|
         printf("%04d: %s\n", addr, o)
         addr += 1
       end

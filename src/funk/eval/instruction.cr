@@ -1,9 +1,9 @@
 module Funk
   struct Instruction
     property name  : String
-    property nargs : Int32
+    property operand_width : Array(Int32)
 
-    def initialize(@name : String, @nargs : Int32 = 0)
+    def initialize(@name : String, @operand_width : Array(Int32) = Array(Int32).new)
     end
   end
 end

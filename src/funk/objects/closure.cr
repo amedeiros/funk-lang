@@ -1,7 +1,7 @@
 module Funk
   module Objects
     struct CompiledFunction
-      property code     : Array(Int32)
+      property code     : Array(Bytes)
       property nlocals : Int32
       property nargs   : Int32
 
